@@ -54,6 +54,10 @@ object LayoutRules : HomeBaseHookNew() {
     private val isSetWSPaddingSideHook by lazy {
         PrefsBridge.getBoolean("home_layout_workspace_padding_horizontal_enable")
     }
+    private val isSetDockSideHook by lazy {
+        PrefsBridge.getBoolean("home_layout_workspace_padding_horizontal_enable") &&
+        PrefsBridge.getBoolean("home_dock_workspace_padding_horizontal_enable")
+    }
 
     private var sCellCountX = 0
     private var sCellCountY = 0
@@ -190,7 +194,7 @@ object LayoutRules : HomeBaseHookNew() {
             if (isSetWSPaddingSideHook) {
                 rules.setIntField(
                     "mWorkspaceCellSide",
-                    (mCellWidth - currentCellWidth * currentCellCountX) / 2
+                    (maxGridWidth - currentCellWidth * currentCellCountX) / 2
                 )
             }
 
@@ -244,6 +248,50 @@ object LayoutRules : HomeBaseHookNew() {
                 val spec = param.result as Long
                 param.result = (widthSpec.toLong() shl 32) or (spec and 0xFFFFFFFFL)
             }
+
+        // Dock horizontal spacing: adjust icon margins, skip background view
+        if (isSetDockSideHook) {
+            findClass("com.miui.home.launcher.hotseats.HotSeats").findMethod {
+                name("initContent")
+            }.createAfterHook {
+                val hotSeats = it.thisObject as android.view.ViewGroup
+                val dockDp = PrefsBridge.getInt("home_dock_workspace_padding_horizontal", 0)
+                val wsDp = PrefsBridge.getInt("home_layout_workspace_padding_horizontal", 0)
+                val marginPx = DisplayUtils.dp2px(((dockDp - wsDp) / 2).toFloat())
+                if (marginPx == 0) return@createAfterHook
+                hotSeats.post {
+                    adjustChildMargins(hotSeats, marginPx)
+                }
+            }
+        }
+    }
+
+    private fun adjustChildMargins(parent: android.view.ViewGroup, marginPx: Int) {
+        val bgOrigins = mutableMapOf<android.view.View, Pair<Int, Int>>()
+        for (i in 0 until parent.childCount) {
+            val child = parent.getChildAt(i)
+            val lp = child.layoutParams
+            if (lp is android.view.ViewGroup.MarginLayoutParams) {
+                // Save original margins for potential background views
+                if (child !is android.view.ViewGroup || child.childCount == 0) {
+                    bgOrigins[child] = Pair(lp.marginStart, lp.marginEnd)
+                }
+                lp.marginStart += marginPx
+                lp.marginEnd += marginPx
+                child.layoutParams = lp
+            }
+            if (child is android.view.ViewGroup) {
+                adjustChildMargins(child, marginPx)
+            }
+        }
+        // Restore original margins on background views
+        for ((bg, orig) in bgOrigins) {
+            val lp = bg.layoutParams as? android.view.ViewGroup.MarginLayoutParams ?: continue
+            lp.marginStart = orig.first
+            lp.marginEnd = orig.second
+            bg.layoutParams = lp
+            break
+        }
     }
 
     override fun initBase() {
