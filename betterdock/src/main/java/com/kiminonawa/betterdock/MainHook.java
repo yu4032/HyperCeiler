@@ -33,7 +33,8 @@ public class MainHook implements IXposedHookLoadPackage {
     private static String lightMode = "fixed";
     private static int blurRadius = 100;
     private static int heightOffset, widthOffset, cornerOffset = -1;
-    private static final int SQUIRCLE_STROKE_OFF = 8;
+    private static int sqStrokeW = 4, sqStrokeOff = 8;
+    private static float sqOuterCp = 0.58f;
     private static boolean useSquircle;
 
     private static int readInt(String path, int def) {
@@ -70,6 +71,9 @@ public class MainHook implements IXposedHookLoadPackage {
         heightOffset = readInt("/sdcard/dock_height_offset.txt", 0);
         widthOffset = readInt("/sdcard/dock_width_offset.txt", 0);
         cornerOffset = readInt("/sdcard/dock_corner_offset.txt", -1);
+        sqStrokeW = readInt("/sdcard/dock_sq_stroke_w.txt", 4);
+        sqStrokeOff = readInt("/sdcard/dock_sq_stroke_off.txt", 8);
+        sqOuterCp = readInt("/sdcard/dock_sq_outer_cp.txt", 58) / 100f;
         useSquircle = "1".equals(readStr("/sdcard/dock_squircle.txt", "0"));
         XposedBridge.log("[DC] mode=" + lightMode + " blur=" + blurRadius + " ho=" + heightOffset + " wo=" + widthOffset);
 
@@ -185,10 +189,9 @@ public class MainHook implements IXposedHookLoadPackage {
                                     // Squircle stroke: fill outer - fill inner = perfect edge
                                     // Squircle stroke: fill outer - fill inner = perfect edge
                                     if (useSquircle) {
-                                        float strokeW = 4f;
-                                        float off = SQUIRCLE_STROKE_OFF;
-                                        // Outer: smaller control point for rounder corners at larger radius
-                                        Path outer = squirclePath(new RectF(-off, -off, w+off, h+off), r, 0.58f);
+                                        float strokeW = sqStrokeW;
+                                        float off = sqStrokeOff;
+                                        Path outer = squirclePath(new RectF(-off, -off, w+off, h+off), r, sqOuterCp);
                                         Path inner = squirclePath(new RectF(-off+strokeW, -off+strokeW, w+off-strokeW, h+off-strokeW), r - strokeW * 0.5f, 0.65f);
 
                                         Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
