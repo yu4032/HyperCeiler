@@ -188,29 +188,27 @@ public class MainHook implements IXposedHookLoadPackage {
                                         tint.setStyle(Paint.Style.FILL);
                                         tint.setColor(Color.argb(a, Color.red(lgTint), Color.green(lgTint), Color.blue(lgTint)));
 
-                                        if (useSquircle) {
-                                            Path path = squirclePath(new RectF(0,0,w,h), r);
-                                            canvas.drawPath(path, shadow);
-                                            canvas.drawPath(path, tint);
-                                            canvas.drawPath(path, highlight);
-                                            // Chromatic aberration
-                                            Paint rs = new Paint(Paint.ANTI_ALIAS_FLAG); rs.setStyle(Paint.Style.STROKE);
-                                            rs.setStrokeWidth(6f); rs.setColor(Color.argb(a/3, 255, 0, 0));
-                                            canvas.drawPath(squirclePath(new RectF(-4,-4,w+4,h+4), r+4), rs);
-                                            Paint bs = new Paint(Paint.ANTI_ALIAS_FLAG); bs.setStyle(Paint.Style.STROKE);
-                                            bs.setStrokeWidth(6f); bs.setColor(Color.argb(a/3, 0, 0, 255));
-                                            canvas.drawPath(squirclePath(new RectF(4,4,w-4,h-4), r-4), bs);
-                                        } else {
-                                            canvas.drawRoundRect(0,0,w,h, r,r, shadow);
-                                            canvas.drawRoundRect(0,0,w,h, r,r, tint);
-                                            canvas.drawRoundRect(0,0,w,h, r,r, highlight);
-                                            Paint rs = new Paint(Paint.ANTI_ALIAS_FLAG); rs.setStyle(Paint.Style.STROKE);
-                                            rs.setStrokeWidth(6f); rs.setColor(Color.argb(a/3, 255, 0, 0));
-                                            canvas.drawRoundRect(-4,-4,w+4,h+4, r+4,r+4, rs);
-                                            Paint bs = new Paint(Paint.ANTI_ALIAS_FLAG); bs.setStyle(Paint.Style.STROKE);
-                                            bs.setStrokeWidth(6f); bs.setColor(Color.argb(a/3, 0, 0, 255));
-                                            canvas.drawRoundRect(4,4,w-4,h-4, r-4,r-4, bs);
-                                        }
+                                        // Lens refraction: concentric shifted layers for glass edge bending
+                                        Paint lens = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                        lens.setStyle(Paint.Style.STROKE);
+
+                                        // Red channel: outermost, thickest
+                                        lens.setStrokeWidth(12f);
+                                        lens.setColor(Color.argb(a/2, 255, 0, 0));
+                                        if (useSquircle) canvas.drawPath(squirclePath(new RectF(-6,-6,w+6,h+6), r+6), lens);
+                                        else canvas.drawRoundRect(-6,-6,w+6,h+6, r+6,r+6, lens);
+
+                                        // Cyan channel: middle
+                                        lens.setStrokeWidth(8f);
+                                        lens.setColor(Color.argb(a/3, 0, 255, 255));
+                                        if (useSquircle) canvas.drawPath(squirclePath(new RectF(-3,-3,w+3,h+3), r+3), lens);
+                                        else canvas.drawRoundRect(-3,-3,w+3,h+3, r+3,r+3, lens);
+
+                                        // Blue channel: innermost
+                                        lens.setStrokeWidth(5f);
+                                        lens.setColor(Color.argb(a/4, 0, 0, 255));
+                                        if (useSquircle) canvas.drawPath(squirclePath(new RectF(0,0,w,h), r), lens);
+                                        else canvas.drawRoundRect(0,0,w,h, r,r, lens);
                                     }
                                 };
                                 glassOverlay.setId(View.generateViewId());
