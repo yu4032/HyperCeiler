@@ -253,12 +253,22 @@ public class MainHook implements IXposedHookLoadPackage {
                                         new float[]{0f,0.3f,0.5f,1f}, Shader.TileMode.CLAMP));
 
                                     if (!useSquircle && fillDiff) {
-                                        canvas.drawRoundRect(0,0,w,h, r,r, dSpec);
+                                        Paint base = new Paint(Paint.ANTI_ALIAS_FLAG); base.setStyle(Paint.Style.FILL);
+                                        base.setColor(Color.argb(120,255,255,255));
+                                        canvas.drawRoundRect(0,0,w,h, r,r, base);
                                         Paint clear = new Paint(Paint.ANTI_ALIAS_FLAG); clear.setStyle(Paint.Style.FILL);
                                         clear.setColor(Color.argb(0,255,255,255)); clear.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
                                         canvas.drawRoundRect(strokeW,strokeW,w-strokeW,h-strokeW, r-strokeW,r-strokeW, clear);
+                                        if ("dynamic".equals(lightMode)||"fixed".equals(lightMode)) {
+                                            canvas.drawRoundRect(0,0,w,h,r,r,dSpec);
+                                            canvas.drawRoundRect(strokeW,strokeW,w-strokeW,h-strokeW,r-strokeW,r-strokeW,dSpec);
+                                        }
                                     } else {
-                                        canvas.drawRoundRect(1,1,w-1,h-1,r,r,dSpec);
+                                        Paint base = new Paint(Paint.ANTI_ALIAS_FLAG); base.setStyle(Paint.Style.STROKE);
+                                        base.setStrokeWidth((float)stdStrokeW); base.setColor(Color.argb(120,255,255,255));
+                                        canvas.drawRoundRect(1,1,w-1,h-1,r,r,base);
+                                        if ("dynamic".equals(lightMode)||"fixed".equals(lightMode))
+                                            canvas.drawRoundRect(1,1,w-1,h-1,r,r,dSpec);
                                     }
                                 }
                             };
