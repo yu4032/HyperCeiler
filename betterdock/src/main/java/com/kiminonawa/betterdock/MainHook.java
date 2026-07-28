@@ -187,8 +187,9 @@ public class MainHook implements IXposedHookLoadPackage {
                                     if (useSquircle) {
                                         float strokeW = 6f;
                                         float off = SQUIRCLE_STROKE_OFF;
-                                        Path outer = squirclePath(new RectF(-off, -off, w+off, h+off), r);
-                                        Path inner = squirclePath(new RectF(-off+strokeW, -off+strokeW, w+off-strokeW, h+off-strokeW), r - strokeW * 0.5f);
+                                        // Outer: smaller control point for rounder corners at larger radius
+                                        Path outer = squirclePath(new RectF(-off, -off, w+off, h+off), r, 0.55f);
+                                        Path inner = squirclePath(new RectF(-off+strokeW, -off+strokeW, w+off-strokeW, h+off-strokeW), r - strokeW * 0.5f, 0.65f);
 
                                         Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
                                         fill.setStyle(Paint.Style.FILL);
@@ -299,10 +300,12 @@ public class MainHook implements IXposedHookLoadPackage {
 
     private static float clamp(float v, float lo, float hi) { return Math.max(lo, Math.min(hi, v)); }
 
-    private static Path squirclePath(RectF rect, float radius) {
+    private static Path squirclePath(RectF rect, float radius) { return squirclePath(rect, radius, 0.65f); }
+
+    private static Path squirclePath(RectF rect, float radius, float cp) {
         Path p = new Path();
         if (radius <= 1) { p.addRect(rect, Path.Direction.CW); return p; }
-        float r = radius, c = r * 0.65f; // iPad dock continuous curve
+        float r = radius, c = r * cp;
         float l = rect.left, t = rect.top, ri = rect.right, b = rect.bottom;
         p.moveTo(l, t+r);
         p.cubicTo(l, t+r-c, l+r-c, t, l+r, t);
