@@ -157,21 +157,38 @@ public class MainHook implements IXposedHookLoadPackage {
                                             lastCapture=now;
                                         }
 
-                                        // Draw blurred background
+                                        // Draw chromatically-shifted blurred background for refraction
                                         if(blurredBg!=null&&!blurredBg.isRecycled()){
+                                            float refract=lgBlurScale*2f; // pixel displacement
+                                            int rAlpha=(int)(lgAlpha*1.5f); // stronger
                                             Paint bp=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
-                                            bp.setAlpha(lgAlpha);
-                                            if(useSquircle){
-                                                canvas.save();
-                                                canvas.clipPath(squirclePath(new RectF(0,0,w,h),r));
-                                                canvas.drawBitmap(blurredBg,null,new RectF(0,0,w,h),bp);
-                                                canvas.restore();
-                                            }else{
-                                                canvas.save();
-                                                canvas.clipRect(0,0,w,h);
-                                                canvas.drawBitmap(blurredBg,null,new RectF(0,0,w,h),bp);
-                                                canvas.restore();
-                                            }
+
+                                            // Red channel offset (top-left)
+                                            bp.setColorFilter(new android.graphics.PorterDuffColorFilter(
+                                                Color.argb(rAlpha/3,255,0,0), android.graphics.PorterDuff.Mode.SRC_ATOP));
+                                            canvas.save();
+                                            if(useSquircle) canvas.clipPath(squirclePath(new RectF(0,0,w,h),r));
+                                            else canvas.clipRect(0,0,w,h);
+                                            canvas.drawBitmap(blurredBg,null,new RectF(-refract,-refract,w-refract,h-refract),bp);
+                                            canvas.restore();
+
+                                            // Blue channel offset (bottom-right)
+                                            bp.setColorFilter(new android.graphics.PorterDuffColorFilter(
+                                                Color.argb(rAlpha/3,0,0,255), android.graphics.PorterDuff.Mode.SRC_ATOP));
+                                            canvas.save();
+                                            if(useSquircle) canvas.clipPath(squirclePath(new RectF(0,0,w,h),r));
+                                            else canvas.clipRect(0,0,w,h);
+                                            canvas.drawBitmap(blurredBg,null,new RectF(refract,refract,w+refract,h+refract),bp);
+                                            canvas.restore();
+
+                                            // Green channel (center, brightest)
+                                            bp.setColorFilter(null);
+                                            bp.setAlpha(rAlpha*2/3);
+                                            canvas.save();
+                                            if(useSquircle) canvas.clipPath(squirclePath(new RectF(0,0,w,h),r));
+                                            else canvas.clipRect(0,0,w,h);
+                                            canvas.drawBitmap(blurredBg,null,new RectF(0,0,w,h),bp);
+                                            canvas.restore();
                                         }
 
                                         // Refraction gradients

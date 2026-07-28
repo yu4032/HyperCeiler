@@ -68,7 +68,7 @@ public class SettingsActivity extends Activity {
         lgGroup.addView(lgTintInput);
         lgGroup.addView(label("Glass Alpha (0-255)"));
         lgAlphaInput = new EditText(this);
-        lgAlphaInput.setText(String.valueOf(sp.getInt("lg_alpha", 80)));
+        lgAlphaInput.setText(String.valueOf(sp.getInt("lg_alpha", 200)));
         lgAlphaInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         lgGroup.addView(lgAlphaInput);
         lgGroup.addView(label("Capture Scale (1-8, lower=more blur)"));
@@ -151,7 +151,8 @@ public class SettingsActivity extends Activity {
             mode = 1; blurRadiusInput.setText("200"); heightOffsetInput.setText("0");
             widthOffsetInput.setText("0"); cornerInput.setText("0"); sq.setChecked(true);
             sqStrokeWidthInput.setText("3"); sqStrokeOffInput.setText("6"); sqOuterCpInput.setText("55");
-            lgCheck.setChecked(true); lgTintInput.setText("38FFFFFF"); lgAlphaInput.setText("80");
+            lgCheck.setChecked(true); lgTintInput.setText("38FFFFFF"); lgAlphaInput.setText("200");
+            lgBlurInput.setText("3");
         }); presetRow.addView(lgBtn);
         layout.addView(presetRow);
 
