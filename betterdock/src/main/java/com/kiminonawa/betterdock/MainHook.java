@@ -183,7 +183,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                 protected void onDraw(Canvas canvas) {
                                     if (bgW < 1 || bgH < 1) return;
                                     float w = bgW, h = bgH;
-                                    float r = Math.max(0, useSquircle ? bgR + SQUIRCLE_STROKE_OFF : bgR - 1f);
+                                    float r = Math.max(0, useSquircle ? bgR + sqStrokeOff : bgR - 1f);
                                     float maxDim = Math.max(w, h);
 
                                     // Squircle stroke: fill outer - fill inner = perfect edge
