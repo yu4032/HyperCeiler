@@ -154,66 +154,25 @@ public class MainHook implements IXposedHookLoadPackage {
                             if (liquidGlass && glassOverlay == null) {
                                 glassOverlay = new View(oldBg.getContext()) {
                                     @Override protected void onDraw(Canvas canvas) {
+                                        // GPU blur handles rendering — just draw tint
                                         if (bgW < 1 || bgH < 1) return;
                                         float w = bgW, h = bgH, r = Math.max(0, bgR);
                                         int a = Color.alpha(lgTint) * lgAlpha / 255;
-
-                                        // Refraction gradient (gyro-driven specular highlight and shadow)
-                                        float sx = gyroY * 0.5f; // horizontal shift from Y-rotation
-                                        float sy = gyroX * 0.5f; // vertical shift from X-rotation
-
-                                        // Specular highlight gradient (top-left to bottom-right, shifted by gyro)
-                                        float hlx1 = w*(0.2f + sx), hly1 = h*(0.1f + sy);
-                                        float hlx2 = w*(0.6f + sx), hly2 = h*(0.4f + sy);
-                                        Paint highlight = new Paint(Paint.ANTI_ALIAS_FLAG);
-                                        highlight.setStyle(Paint.Style.FILL);
-                                        highlight.setShader(new LinearGradient(hlx1, hly1, hlx2, hly2,
-                                            new int[]{Color.argb(lgAlpha, 255,255,255),
-                                                      Color.argb(lgAlpha/3, 255,255,255),
-                                                      Color.argb(0,255,255,255)},
-                                            new float[]{0f, 0.3f, 1f}, Shader.TileMode.CLAMP));
-
-                                        // Shadow gradient (opposite side)
-                                        float shx1 = w*(0.8f - sx), shy1 = h*(0.8f - sy);
-                                        float shx2 = w*(0.5f - sx), shy2 = h*(0.7f - sy);
-                                        Paint shadow = new Paint(Paint.ANTI_ALIAS_FLAG);
-                                        shadow.setStyle(Paint.Style.FILL);
-                                        shadow.setShader(new LinearGradient(shx1, shy1, shx2, shy2,
-                                            new int[]{Color.argb(lgAlpha/2, 0,0,0),
-                                                      Color.argb(0,0,0,0)},
-                                            new float[]{0f, 1f}, Shader.TileMode.CLAMP));
-
-                                        // Tint fill
-                                        Paint tint = new Paint(Paint.ANTI_ALIAS_FLAG);
-                                        tint.setStyle(Paint.Style.FILL);
-                                        tint.setColor(Color.argb(a, Color.red(lgTint), Color.green(lgTint), Color.blue(lgTint)));
-
-                                        // Lens refraction: concentric shifted layers for glass edge bending
-                                        Paint lens = new Paint(Paint.ANTI_ALIAS_FLAG);
-                                        lens.setStyle(Paint.Style.STROKE);
-
-                                        // Red channel: outermost, thickest
-                                        lens.setStrokeWidth(12f);
-                                        lens.setColor(Color.argb(a/2, 255, 0, 0));
-                                        if (useSquircle) canvas.drawPath(squirclePath(new RectF(-6,-6,w+6,h+6), r+6), lens);
-                                        else canvas.drawRoundRect(-6,-6,w+6,h+6, r+6,r+6, lens);
-
-                                        // Cyan channel: middle
-                                        lens.setStrokeWidth(8f);
-                                        lens.setColor(Color.argb(a/3, 0, 255, 255));
-                                        if (useSquircle) canvas.drawPath(squirclePath(new RectF(-3,-3,w+3,h+3), r+3), lens);
-                                        else canvas.drawRoundRect(-3,-3,w+3,h+3, r+3,r+3, lens);
-
-                                        // Blue channel: innermost
-                                        lens.setStrokeWidth(5f);
-                                        lens.setColor(Color.argb(a/4, 0, 0, 255));
-                                        if (useSquircle) canvas.drawPath(squirclePath(new RectF(0,0,w,h), r), lens);
-                                        else canvas.drawRoundRect(0,0,w,h, r,r, lens);
+                                        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                        p.setColor(Color.argb(a, Color.red(lgTint), Color.green(lgTint), Color.blue(lgTint)));
+                                        if (useSquircle) canvas.drawPath(squirclePath(new RectF(0,0,w,h), r), p);
+                                        else canvas.drawRoundRect(0,0,w,h, r,r, p);
                                     }
                                 };
+                                // Apply GPU blur (HyperLight-style: anisotropic for chromatic look)
+                                int blurH = blurRadius / 6;  // horizontal blur
+                                int blurV = blurRadius / 4;  // vertical blur (stronger = chromatic)
+                                glassOverlay.setRenderEffect(
+                                    android.graphics.RenderEffect.createBlurEffect(blurH, blurV, Shader.TileMode.CLAMP));
                                 glassOverlay.setId(View.generateViewId());
                                 parent.addView(glassOverlay, parent.indexOfChild(oldBg)+1,
-                                    new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, gravity));
+                                    new FrameLayout.LayoutParams(-1, -1, gravity));
+                                XposedBridge.log("[DC] GPU blur: " + blurH + "x" + blurV);
                             }
 
                             // Bloom overlay
