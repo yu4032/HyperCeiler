@@ -38,6 +38,7 @@ public class MainHook implements IXposedHookLoadPackage {
     private static float sqOuterCp = 0.58f;
     private static boolean useSquircle;
     private static boolean liquidGlass;
+    private static boolean lgBgOn = true;
     private static int lgAlpha = 80;
     private static int lgTint = 0x38FFFFFF;
 
@@ -73,6 +74,7 @@ public class MainHook implements IXposedHookLoadPackage {
         liquidGlass = "1".equals(readStr("/sdcard/dock_lg.txt", "0"));
         lgAlpha = readInt("/sdcard/dock_lg_alpha.txt", 80);
         lgTint = parseHex(readStr("/sdcard/dock_lg_tint.txt", "38FFFFFF"), 0x38FFFFFF);
+        lgBgOn = !"0".equals(readStr("/sdcard/dock_lg_bg.txt", "1"));
 
         try {
             // Size hooks
@@ -148,7 +150,7 @@ public class MainHook implements IXposedHookLoadPackage {
                             int gravity = ((FrameLayout.LayoutParams)oldBg.getLayoutParams()).gravity;
 
                             // Liquid Glass overlay (behind bloom, above blur bg)
-                            if (liquidGlass && glassOverlay == null) {
+                            if (liquidGlass && glassOverlay == null && lgBgOn) {
                                 glassOverlay = new View(oldBg.getContext()) {
                                     @Override protected void onDraw(Canvas canvas) {
                                         // GPU blur handles rendering — just draw tint

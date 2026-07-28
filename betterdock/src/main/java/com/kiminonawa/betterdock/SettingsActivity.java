@@ -76,6 +76,11 @@ public class SettingsActivity extends Activity {
         lgBlurInput.setText(String.valueOf(sp.getInt("lg_blur_scale", 4)));
         lgBlurInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         lgGroup.addView(lgBlurInput);
+
+        CheckBox lgBgCheck = new CheckBox(this);
+        lgBgCheck.setText("Show Background (disable to save battery)");
+        lgBgCheck.setChecked(sp.getBoolean("lg_bg_on", true));
+        lgGroup.addView(lgBgCheck);
         lgGroup.setVisibility(lgCheck.isChecked() ? View.VISIBLE : View.GONE);
         lgCheck.setOnCheckedChangeListener((cb, checked) -> lgGroup.setVisibility(checked ? View.VISIBLE : View.GONE));
 
@@ -173,6 +178,7 @@ public class SettingsActivity extends Activity {
                 int lgAlpha = Integer.parseInt(lgAlphaInput.getText().toString().trim());
                 String lgTint = lgTintInput.getText().toString().trim();
                 int lgBlur = Integer.parseInt(lgBlurInput.getText().toString().trim());
+                boolean lgBg = lgBgCheck.isChecked();
 
                 sp.edit().putString("light_mode", val)
                     .putInt("blur_radius", br).putInt("height_offset", ho)
@@ -180,7 +186,7 @@ public class SettingsActivity extends Activity {
                     .putBoolean("squircle", squircle)
                     .putInt("sq_stroke_w", sw).putInt("sq_stroke_off", so).putInt("sq_outer_cp", cp)
                     .putBoolean("liquid_glass", lg).putString("lg_tint", lgTint).putInt("lg_alpha", lgAlpha)
-                    .putInt("lg_blur_scale", lgBlur).commit();
+                    .putInt("lg_blur_scale", lgBlur).putBoolean("lg_bg_on", lgBg).commit();
 
                 Process p = Runtime.getRuntime().exec("su");
                 DataOutputStream os = new DataOutputStream(p.getOutputStream());
@@ -197,6 +203,7 @@ public class SettingsActivity extends Activity {
                 os.writeBytes("echo '" + lgAlpha + "' > /sdcard/dock_lg_alpha.txt\n");
                 os.writeBytes("echo '" + lgTint + "' > /sdcard/dock_lg_tint.txt\n");
                 os.writeBytes("echo '" + lgBlur + "' > /sdcard/dock_lg_blur_scale.txt\n");
+                os.writeBytes("echo '" + (lgBg ? "1" : "0") + "' > /sdcard/dock_lg_bg.txt\n");
                 os.writeBytes("am force-stop com.miui.home\nsleep 1\n");
                 os.writeBytes("am start -n com.miui.home/.launcher.Launcher\nexit\n");
                 os.flush(); p.waitFor();
