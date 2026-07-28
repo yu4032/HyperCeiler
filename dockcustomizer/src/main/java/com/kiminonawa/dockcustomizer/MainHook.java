@@ -97,6 +97,7 @@ public class MainHook implements IXposedHookLoadPackage {
                     @Override protected void afterHookedMethod(MethodHookParam p) { syncAll((View) p.thisObject); }
                 });
 
+            // Hook setBackgroundRadius to also pass squircle flag
             XposedHelpers.findAndHookMethod(
                 "com.miui.home.launcher.hotseats.HotSeatsListContentBlurBackground2",
                 lpparam.classLoader, "setBackgroundRadius", float.class, new XC_MethodHook() {
@@ -105,7 +106,26 @@ public class MainHook implements IXposedHookLoadPackage {
                             p.args[0] = ((Float) p.args[0]) + cornerOffset;
                         }
                     }
-                    @Override protected void afterHookedMethod(MethodHookParam p) { syncAll((View) p.thisObject); }
+                    @Override protected void afterHookedMethod(MethodHookParam p) {
+                        if (useSquircle) {
+                            // The blur layer must also be rounded with squircle
+                            // Hook BlurUtilities.setBackgroundBlur to substitute squircle outline
+                            try {
+                                View v = (View) p.thisObject;
+                                float radius = (Float) XposedHelpers.getObjectField(v, "mCornerRadius");
+                                if (radius > 0) {
+                                    Path sp = squirclePath(
+                                        new RectF(0, 0, v.getWidth(), v.getHeight()), radius);
+                                    v.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                                        @Override public void getOutline(View vv, Outline o) {
+                                            o.setPath(sp);
+                                        }
+                                    });
+                                }
+                            } catch (Throwable ignored) {}
+                        }
+                        syncAll((View) p.thisObject);
+                    }
                 });
 
             // Hook updateRoundRect to use squircle outline
