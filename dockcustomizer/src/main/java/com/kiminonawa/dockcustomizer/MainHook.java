@@ -166,6 +166,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                 @Override
                                 protected void onDraw(Canvas canvas) {
                                     if (bgW < 1 || bgH < 1) return;
+                                    float w = bgW, h = bgH;
                                     float r = Math.max(0, useSquircle ? bgR : bgR - 1f);
                                     float maxDim = Math.max(w, h);
 

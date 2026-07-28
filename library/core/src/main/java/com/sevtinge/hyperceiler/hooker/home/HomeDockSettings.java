@@ -58,9 +58,7 @@ public class HomeDockSettings extends DashboardFragment implements Preference.On
         mDisableRecentIcon.setVisible(isPad());
 
         if (isPad()) {
-            setFuncHint(mAddDockEnable, 1);
-            setFuncHint(mIconAppTitle, 1);
-            setFuncHint(mDockHeight, 1);
+            // DockCustomPad now supports tablet — remove warning hints
         }
 
 

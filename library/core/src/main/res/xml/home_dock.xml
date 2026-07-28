@@ -100,7 +100,7 @@
             app:defaultValue="25"
             app:defaultValueTitle="@string/array_default"
             app:format="%s dp"
-            app:maxValue="160"
+            app:maxValue="300"
             app:showSeekBarValue="true"
             app:stepValue="1" />
 
