@@ -79,9 +79,42 @@ public class SettingsActivity extends Activity {
         cornerInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
         layout.addView(cornerInput);
 
+        CheckBox sq = new CheckBox(this);
+        sq.setText("Squircle Corners");
+        sq.setChecked(sp.getBoolean("squircle", false));
+        layout.addView(sq);
+
         Button apply = new Button(this);
         apply.setText("Apply & Restart Launcher");
-        apply.setOnClickListener(v -> saveAndRestart());
+        apply.setOnClickListener(v -> {
+            String val = mode == 0 ? "none" : mode == 2 ? "dynamic" : "fixed";
+            try {
+                int br = Integer.parseInt(blurRadiusInput.getText().toString().trim());
+                int ho = Integer.parseInt(heightOffsetInput.getText().toString().trim());
+                int wo = Integer.parseInt(widthOffsetInput.getText().toString().trim());
+                int co = Integer.parseInt(cornerInput.getText().toString().trim());
+                boolean squircle = sq.isChecked();
+
+                sp.edit().putString("light_mode", val)
+                    .putInt("blur_radius", br).putInt("height_offset", ho)
+                    .putInt("width_offset", wo).putInt("corner_offset", co)
+                    .putBoolean("squircle", squircle).commit();
+
+                Process p = Runtime.getRuntime().exec("su");
+                DataOutputStream os = new DataOutputStream(p.getOutputStream());
+                os.writeBytes("echo '" + val + "' > /sdcard/dock_light.txt\n");
+                os.writeBytes("echo '" + br + "' > /sdcard/dock_blur_radius.txt\n");
+                os.writeBytes("echo '" + ho + "' > /sdcard/dock_height_offset.txt\n");
+                os.writeBytes("echo '" + wo + "' > /sdcard/dock_width_offset.txt\n");
+                os.writeBytes("echo '" + co + "' > /sdcard/dock_corner_offset.txt\n");
+                os.writeBytes("echo '" + (squircle ? "1" : "0") + "' > /sdcard/dock_squircle.txt\n");
+                os.writeBytes("am force-stop com.miui.home\nsleep 1\n");
+                os.writeBytes("am start -n com.miui.home/.launcher.Launcher\nexit\n");
+                os.flush(); p.waitFor();
+            } catch (Exception e) {
+                Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
         layout.addView(apply);
 
         setContentView(layout);
@@ -91,34 +124,5 @@ public class SettingsActivity extends Activity {
         TextView tv = new TextView(this);
         tv.setText(text); tv.setTextSize(14); tv.setPadding(0, 16, 0, 4);
         return tv;
-    }
-
-    private void saveAndRestart() {
-        String val = mode == 0 ? "none" : mode == 2 ? "dynamic" : "fixed";
-        try {
-            int br = Integer.parseInt(blurRadiusInput.getText().toString().trim());
-            int ho = Integer.parseInt(heightOffsetInput.getText().toString().trim());
-            int wo = Integer.parseInt(widthOffsetInput.getText().toString().trim());
-            int co = Integer.parseInt(cornerInput.getText().toString().trim());
-
-            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
-            sp.edit().putString("light_mode", val)
-                .putInt("blur_radius", br).putInt("height_offset", ho)
-                .putInt("width_offset", wo).putInt("corner_offset", co).commit();
-
-            Process p = Runtime.getRuntime().exec("su");
-            DataOutputStream os = new DataOutputStream(p.getOutputStream());
-            os.writeBytes("echo '" + val + "' > /sdcard/dock_light.txt\n");
-            os.writeBytes("echo '" + br + "' > /sdcard/dock_blur_radius.txt\n");
-            os.writeBytes("echo '" + ho + "' > /sdcard/dock_height_offset.txt\n");
-            os.writeBytes("echo '" + wo + "' > /sdcard/dock_width_offset.txt\n");
-            os.writeBytes("echo '" + co + "' > /sdcard/dock_corner_offset.txt\n");
-            os.writeBytes("am force-stop com.miui.home\nsleep 1\n");
-            os.writeBytes("am start -n com.miui.home/.launcher.Launcher\nexit\n");
-            os.flush(); p.waitFor();
-            Toast.makeText(this, "Done: " + val, Toast.LENGTH_SHORT).show();
-        } catch (Exception e) {
-            Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
     }
 }
