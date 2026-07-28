@@ -194,22 +194,22 @@ public class MainHook implements IXposedHookLoadPackage {
                                             canvas.drawPath(path, tint);
                                             canvas.drawPath(path, highlight);
                                             // Chromatic aberration
-                                            Paint rShift = new Paint(Paint.ANTI_ALIAS_FLAG); rShift.setStyle(Paint.Style.STROKE);
-                                            rShift.setStrokeWidth(3f); rShift.setColor(Color.argb(a/4,255,0,0));
-                                            canvas.drawPath(squirclePath(new RectF(-2,-2,w+2,h+2), r+2), rShift);
-                                            Paint bShift = new Paint(Paint.ANTI_ALIAS_FLAG); bShift.setStyle(Paint.Style.STROKE);
-                                            bShift.setStrokeWidth(3f); bShift.setColor(Color.argb(a/4,0,0,255));
-                                            canvas.drawPath(squirclePath(new RectF(2,2,w-2,h-2), r-2), bShift);
+                                            Paint rs = new Paint(Paint.ANTI_ALIAS_FLAG); rs.setStyle(Paint.Style.STROKE);
+                                            rs.setStrokeWidth(6f); rs.setColor(Color.argb(a/3, 255, 0, 0));
+                                            canvas.drawPath(squirclePath(new RectF(-4,-4,w+4,h+4), r+4), rs);
+                                            Paint bs = new Paint(Paint.ANTI_ALIAS_FLAG); bs.setStyle(Paint.Style.STROKE);
+                                            bs.setStrokeWidth(6f); bs.setColor(Color.argb(a/3, 0, 0, 255));
+                                            canvas.drawPath(squirclePath(new RectF(4,4,w-4,h-4), r-4), bs);
                                         } else {
                                             canvas.drawRoundRect(0,0,w,h, r,r, shadow);
                                             canvas.drawRoundRect(0,0,w,h, r,r, tint);
                                             canvas.drawRoundRect(0,0,w,h, r,r, highlight);
-                                            Paint rShift = new Paint(Paint.ANTI_ALIAS_FLAG); rShift.setStyle(Paint.Style.STROKE);
-                                            rShift.setStrokeWidth(3f); rShift.setColor(Color.argb(a/4,255,0,0));
-                                            canvas.drawRoundRect(-2,-2,w+2,h+2, r+2,r+2, rShift);
-                                            Paint bShift = new Paint(Paint.ANTI_ALIAS_FLAG); bShift.setStyle(Paint.Style.STROKE);
-                                            bShift.setStrokeWidth(3f); bShift.setColor(Color.argb(a/4,0,0,255));
-                                            canvas.drawRoundRect(2,2,w-2,h-2, r-2,r-2, bShift);
+                                            Paint rs = new Paint(Paint.ANTI_ALIAS_FLAG); rs.setStyle(Paint.Style.STROKE);
+                                            rs.setStrokeWidth(6f); rs.setColor(Color.argb(a/3, 255, 0, 0));
+                                            canvas.drawRoundRect(-4,-4,w+4,h+4, r+4,r+4, rs);
+                                            Paint bs = new Paint(Paint.ANTI_ALIAS_FLAG); bs.setStyle(Paint.Style.STROKE);
+                                            bs.setStrokeWidth(6f); bs.setColor(Color.argb(a/3, 0, 0, 255));
+                                            canvas.drawRoundRect(4,4,w-4,h-4, r-4,r-4, bs);
                                         }
                                     }
                                 };
