@@ -23,38 +23,28 @@ public class SettingsActivity extends Activity {
     private EditText sqStrokeWidthInput, sqStrokeOffInput, sqOuterCpInput;
     private LinearLayout sqGroup;
     private int blurRadius = 100, heightOffset, widthOffset, cornerOffset = -1;
-    private int sqStrokeWidth = 4, sqStrokeOff = 8, sqOuterCp = 58; // ×100
+    private int sqStrokeWidth = 4, sqStrokeOff = 8, sqOuterCp = 58;
+    private CheckBox lgCheck;
+    private EditText lgTintInput, lgAlphaInput;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
-        String saved = sp.getString("light_mode", "fixed");
-        if ("none".equals(saved)) mode = 0;
-        else if ("dynamic".equals(saved)) mode = 2;
-
-        blurRadius = sp.getInt("blur_radius", 100);
-        heightOffset = sp.getInt("height_offset", 0);
-        widthOffset = sp.getInt("width_offset", 0);
-        cornerOffset = sp.getInt("corner_offset", -1);
-        sqStrokeWidth = sp.getInt("sq_stroke_w", 4);
-        sqStrokeOff = sp.getInt("sq_stroke_off", 8);
-        sqOuterCp = sp.getInt("sq_outer_cp", 58);
+        loadPrefs(sp);
 
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(48, 96, 48, 48);
         layout.setFitsSystemWindows(true);
-
-        ScrollView scroll = new ScrollView(this);
-        scroll.addView(layout);
+        ScrollView scroll = new ScrollView(this); scroll.addView(layout);
 
         TextView title = new TextView(this);
-        title.setText("BetterDock");
-        title.setTextSize(22);
+        title.setText("BetterDock"); title.setTextSize(22);
         layout.addView(title);
 
+        // Light mode
         layout.addView(label("Light Mode"));
         RadioGroup group = new RadioGroup(this);
         String[] labels = {"No Light", "Fixed Light", "Dynamic Light"};
@@ -66,84 +56,98 @@ public class SettingsActivity extends Activity {
         group.setOnCheckedChangeListener((g, id) -> mode = id);
         layout.addView(group);
 
+        // Liquid Glass
+        lgCheck = new CheckBox(this);
+        lgCheck.setText("Liquid Glass");
+        lgCheck.setChecked(sp.getBoolean("liquid_glass", false));
+
+        LinearLayout lgGroup = new LinearLayout(this); lgGroup.setOrientation(LinearLayout.VERTICAL);
+        lgGroup.addView(label("Glass Tint (AARRGGBB hex)"));
+        lgTintInput = new EditText(this);
+        lgTintInput.setText(sp.getString("lg_tint", "38FFFFFF"));
+        lgGroup.addView(lgTintInput);
+        lgGroup.addView(label("Glass Alpha (0-255)"));
+        lgAlphaInput = new EditText(this);
+        lgAlphaInput.setText(String.valueOf(sp.getInt("lg_alpha", 80)));
+        lgAlphaInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        lgGroup.addView(lgAlphaInput);
+        lgGroup.setVisibility(lgCheck.isChecked() ? View.VISIBLE : View.GONE);
+        lgCheck.setOnCheckedChangeListener((cb, checked) -> lgGroup.setVisibility(checked ? View.VISIBLE : View.GONE));
+
+        layout.addView(lgCheck);
+        layout.addView(lgGroup);
+
+        // Common settings
         layout.addView(label("Blur Radius (0-400)"));
         blurRadiusInput = new EditText(this);
         blurRadiusInput.setText(String.valueOf(blurRadius));
         blurRadiusInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         layout.addView(blurRadiusInput);
 
-        layout.addView(label("Height Offset (px, 0=default)"));
+        layout.addView(label("Height Offset (px)"));
         heightOffsetInput = new EditText(this);
         heightOffsetInput.setText(String.valueOf(heightOffset));
         heightOffsetInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
         layout.addView(heightOffsetInput);
 
-        layout.addView(label("Width Offset (px, 0=default)"));
+        layout.addView(label("Width Offset (px)"));
         widthOffsetInput = new EditText(this);
         widthOffsetInput.setText(String.valueOf(widthOffset));
         widthOffsetInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
         layout.addView(widthOffsetInput);
 
-        layout.addView(label("Corner Radius Offset (px, negative=smaller)"));
+        layout.addView(label("Corner Radius Offset (px)"));
         cornerInput = new EditText(this);
         cornerInput.setText(String.valueOf(cornerOffset));
         cornerInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
         layout.addView(cornerInput);
 
+        // Squircle
         CheckBox sq = new CheckBox(this);
         sq.setText("Squircle Corners");
         sq.setChecked(sp.getBoolean("squircle", false));
-
-        // Squircle-only group (shown/hidden with checkbox)
-        sqGroup = new LinearLayout(this);
-        sqGroup.setOrientation(LinearLayout.VERTICAL);
-
+        sqGroup = new LinearLayout(this); sqGroup.setOrientation(LinearLayout.VERTICAL);
         sqGroup.addView(label("Stroke Width (px)"));
         sqStrokeWidthInput = new EditText(this);
         sqStrokeWidthInput.setText(String.valueOf(sqStrokeWidth));
         sqStrokeWidthInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         sqGroup.addView(sqStrokeWidthInput);
-
         sqGroup.addView(label("Stroke Offset (px)"));
         sqStrokeOffInput = new EditText(this);
         sqStrokeOffInput.setText(String.valueOf(sqStrokeOff));
         sqStrokeOffInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         sqGroup.addView(sqStrokeOffInput);
-
-        sqGroup.addView(label("Outer CP (×100, 55-65)"));
+        sqGroup.addView(label("Outer CP (×100)"));
         sqOuterCpInput = new EditText(this);
         sqOuterCpInput.setText(String.valueOf(sqOuterCp));
         sqOuterCpInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         sqGroup.addView(sqOuterCpInput);
-
         sqGroup.setVisibility(sq.isChecked() ? View.VISIBLE : View.GONE);
-
-        sq.setOnCheckedChangeListener((cb, checked) ->
-            sqGroup.setVisibility(checked ? View.VISIBLE : View.GONE));
-
-        layout.addView(sq);
-        layout.addView(sqGroup);
+        sq.setOnCheckedChangeListener((cb, checked) -> sqGroup.setVisibility(checked ? View.VISIBLE : View.GONE));
+        layout.addView(sq); layout.addView(sqGroup);
 
         // Presets
-        LinearLayout presetRow = new LinearLayout(this);
-        presetRow.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button miBtn = new Button(this);
-        miBtn.setText("Xiaomi Default");
+        LinearLayout presetRow = new LinearLayout(this); presetRow.setOrientation(LinearLayout.HORIZONTAL);
+        Button miBtn = new Button(this); miBtn.setText("Xiaomi Default");
         miBtn.setOnClickListener(v -> {
             mode = 1; blurRadiusInput.setText("100"); heightOffsetInput.setText("0");
             widthOffsetInput.setText("0"); cornerInput.setText("-1"); sq.setChecked(false);
-        });
-        presetRow.addView(miBtn);
-
-        Button ipadBtn = new Button(this);
-        ipadBtn.setText("iPad Default");
+            lgCheck.setChecked(false);
+        }); presetRow.addView(miBtn);
+        Button ipadBtn = new Button(this); ipadBtn.setText("iPad Default");
         ipadBtn.setOnClickListener(v -> {
             mode = 1; blurRadiusInput.setText("120"); heightOffsetInput.setText("1");
             widthOffsetInput.setText("1"); cornerInput.setText("0"); sq.setChecked(true);
             sqStrokeWidthInput.setText("4"); sqStrokeOffInput.setText("8"); sqOuterCpInput.setText("58");
-        });
-        presetRow.addView(ipadBtn);
+            lgCheck.setChecked(false);
+        }); presetRow.addView(ipadBtn);
+        Button lgBtn = new Button(this); lgBtn.setText("Liquid Glass");
+        lgBtn.setOnClickListener(v -> {
+            mode = 1; blurRadiusInput.setText("200"); heightOffsetInput.setText("0");
+            widthOffsetInput.setText("0"); cornerInput.setText("0"); sq.setChecked(true);
+            sqStrokeWidthInput.setText("3"); sqStrokeOffInput.setText("6"); sqOuterCpInput.setText("55");
+            lgCheck.setChecked(true); lgTintInput.setText("38FFFFFF"); lgAlphaInput.setText("80");
+        }); presetRow.addView(lgBtn);
         layout.addView(presetRow);
 
         Button apply = new Button(this);
@@ -159,13 +163,17 @@ public class SettingsActivity extends Activity {
                 int sw = Integer.parseInt(sqStrokeWidthInput.getText().toString().trim());
                 int so = Integer.parseInt(sqStrokeOffInput.getText().toString().trim());
                 int cp = Integer.parseInt(sqOuterCpInput.getText().toString().trim());
+                boolean lg = lgCheck.isChecked();
+                int lgAlpha = Integer.parseInt(lgAlphaInput.getText().toString().trim());
+                String lgTint = lgTintInput.getText().toString().trim();
 
                 sp.edit().putString("light_mode", val)
                     .putInt("blur_radius", br).putInt("height_offset", ho)
                     .putInt("width_offset", wo).putInt("corner_offset", co)
                     .putBoolean("squircle", squircle)
-                    .putInt("sq_stroke_w", sw).putInt("sq_stroke_off", so)
-                    .putInt("sq_outer_cp", cp).commit();
+                    .putInt("sq_stroke_w", sw).putInt("sq_stroke_off", so).putInt("sq_outer_cp", cp)
+                    .putBoolean("liquid_glass", lg).putString("lg_tint", lgTint).putInt("lg_alpha", lgAlpha)
+                    .commit();
 
                 Process p = Runtime.getRuntime().exec("su");
                 DataOutputStream os = new DataOutputStream(p.getOutputStream());
@@ -178,6 +186,9 @@ public class SettingsActivity extends Activity {
                 os.writeBytes("echo '" + sw + "' > /sdcard/dock_sq_stroke_w.txt\n");
                 os.writeBytes("echo '" + so + "' > /sdcard/dock_sq_stroke_off.txt\n");
                 os.writeBytes("echo '" + cp + "' > /sdcard/dock_sq_outer_cp.txt\n");
+                os.writeBytes("echo '" + (lg ? "1" : "0") + "' > /sdcard/dock_lg.txt\n");
+                os.writeBytes("echo '" + lgAlpha + "' > /sdcard/dock_lg_alpha.txt\n");
+                os.writeBytes("echo '" + lgTint + "' > /sdcard/dock_lg_tint.txt\n");
                 os.writeBytes("am force-stop com.miui.home\nsleep 1\n");
                 os.writeBytes("am start -n com.miui.home/.launcher.Launcher\nexit\n");
                 os.flush(); p.waitFor();
@@ -186,8 +197,19 @@ public class SettingsActivity extends Activity {
             }
         });
         layout.addView(apply);
-
         setContentView(scroll);
+    }
+
+    private void loadPrefs(SharedPreferences sp) {
+        String s = sp.getString("light_mode", "fixed");
+        if ("none".equals(s)) mode = 0; else if ("dynamic".equals(s)) mode = 2;
+        blurRadius = sp.getInt("blur_radius", 100);
+        heightOffset = sp.getInt("height_offset", 0);
+        widthOffset = sp.getInt("width_offset", 0);
+        cornerOffset = sp.getInt("corner_offset", -1);
+        sqStrokeWidth = sp.getInt("sq_stroke_w", 4);
+        sqStrokeOff = sp.getInt("sq_stroke_off", 8);
+        sqOuterCp = sp.getInt("sq_outer_cp", 58);
     }
 
     private TextView label(String text) {
