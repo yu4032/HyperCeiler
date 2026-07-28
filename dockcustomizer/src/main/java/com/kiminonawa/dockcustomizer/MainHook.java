@@ -94,7 +94,14 @@ public class MainHook implements IXposedHookLoadPackage {
 
             XposedHelpers.findAndHookMethod(
                 "com.miui.home.launcher.hotseats.HotSeatsListContentBlurBackground2",
-                lpparam.classLoader, "setBackgroundRadius", float.class, mkRadiusHook());
+                lpparam.classLoader, "setBackgroundRadius", float.class, new XC_MethodHook() {
+                    @Override protected void beforeHookedMethod(MethodHookParam p) {
+                        if (cornerOffset != 0) {
+                            p.args[0] = ((Float) p.args[0]) + cornerOffset;
+                        }
+                    }
+                    @Override protected void afterHookedMethod(MethodHookParam p) { syncAll((View) p.thisObject); }
+                });
 
             // Hook addBlur to customize blur radius
             XposedHelpers.findAndHookMethod(
@@ -220,12 +227,6 @@ public class MainHook implements IXposedHookLoadPackage {
     }
 
     private static float clamp(float v, float lo, float hi) { return Math.max(lo, Math.min(hi, v)); }
-
-    private static XC_MethodHook mkRadiusHook() {
-        return new XC_MethodHook() {
-            @Override protected void afterHookedMethod(MethodHookParam p) { syncAll((View) p.thisObject); }
-        };
-    }
 
     private static void syncAll(View oldBg) {
         if (overlay == null || oldBg == null) return;
