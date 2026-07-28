@@ -40,7 +40,7 @@ public class MainHook implements IXposedHookLoadPackage {
     private static boolean liquidGlass;
     private static boolean lgBgOn = true;
     private static boolean fillDiff;
-    private static int strokeW = 2;
+    private static int strokeW = 2, stdStrokeW = 4;
     private static int lgAlpha = 80;
     private static int lgTint = 0x38FFFFFF;
 
@@ -79,6 +79,7 @@ public class MainHook implements IXposedHookLoadPackage {
         lgBgOn = !"0".equals(readStr("/sdcard/dock_lg_bg.txt", "1"));
         fillDiff = "1".equals(readStr("/sdcard/dock_fill_diff.txt", "0"));
         strokeW = readInt("/sdcard/dock_stroke_w.txt", 2);
+        stdStrokeW = readInt("/sdcard/dock_std_stroke_w.txt", 4);
 
         try {
             // Size hooks
@@ -233,7 +234,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                             canvas.drawRoundRect(strokeW,strokeW,w-strokeW,h-strokeW, r-strokeW,r-strokeW, s); return;
                                         } else {
                                             Paint s = new Paint(Paint.ANTI_ALIAS_FLAG); s.setStyle(Paint.Style.STROKE);
-                                            s.setStrokeWidth(4f); s.setColor(Color.argb(200,255,255,255));
+                                            s.setStrokeWidth((float)stdStrokeW); s.setColor(Color.argb(200,255,255,255));
                                             canvas.drawRoundRect(1,1,w-1,h-1,r,r,s); return;
                                         }
                                     }
@@ -258,9 +259,9 @@ public class MainHook implements IXposedHookLoadPackage {
                                         canvas.drawRoundRect(strokeW,strokeW,w-strokeW,h-strokeW, r-strokeW,r-strokeW, s1p);
                                     } else {
                                         Paint base = new Paint(Paint.ANTI_ALIAS_FLAG); base.setStyle(Paint.Style.STROKE);
-                                        base.setStrokeWidth(4f); base.setColor(Color.argb(120,255,255,255));
+                                        base.setStrokeWidth((float)stdStrokeW); base.setColor(Color.argb(120,255,255,255));
                                         Paint s1p = new Paint(Paint.ANTI_ALIAS_FLAG); s1p.setStyle(Paint.Style.STROKE);
-                                        s1p.setStrokeWidth(4f);
+                                        s1p.setStrokeWidth((float)stdStrokeW);
                                         s1p.setShader(new RadialGradient(s1x,s1y,maxDim*0.4f,
                                             new int[]{Color.argb(255,255,255,255),Color.argb(120,255,255,255),Color.argb(0,255,255,255)},
                                             new float[]{0f,0.5f,1f}, Shader.TileMode.CLAMP));
