@@ -151,6 +151,37 @@ public class MainHook implements IXposedHookLoadPackage {
                             ViewGroup parent = (ViewGroup)oldBg.getParent();
                             if (parent == null) return;
 
+                            // --- Delegate to HyperLight liquid glass (search all ClassLoaders) ---
+                            if ("1".equals(readStr("/sdcard/dock_use_hl.txt", "0"))) {
+                                try {
+                                    float density = oldBg.getResources().getDisplayMetrics().density;
+                                    // Walk parent ClassLoaders to find HyperLight's oc0
+                                    Class<?> oc0 = null;
+                                    ClassLoader cl = lpparam.classLoader;
+                                    while (cl != null && oc0 == null) {
+                                        try { oc0 = cl.loadClass("oc0"); break; }
+                                        catch (Throwable ignored) { cl = cl.getParent(); }
+                                    }
+                                    if (oc0 == null) {
+                                        // Try Thread context ClassLoader
+                                        cl = Thread.currentThread().getContextClassLoader();
+                                        while (cl != null && oc0 == null) {
+                                            try { oc0 = cl.loadClass("oc0"); break; }
+                                            catch (Throwable ignored) { cl = cl.getParent(); }
+                                        }
+                                    }
+                                    if (oc0 != null) {
+                                        oc0.getMethod("a", View.class, Float.TYPE)
+                                            .invoke(null, oldBg, density * 30f);
+                                        XposedBridge.log("[DC] delegated to HyperLight via " + oc0.getClassLoader());
+                                        return;
+                                    }
+                                    XposedBridge.log("[DC] HyperLight: oc0 not found in any ClassLoader");
+                                } catch (Throwable e) {
+                                    XposedBridge.log("[DC] HyperLight: " + e.getClass().getSimpleName() + " " + e.getMessage());
+                                }
+                            }
+
                             int gravity = ((FrameLayout.LayoutParams)oldBg.getLayoutParams()).gravity;
 
                             // Liquid Glass overlay (behind bloom, above blur bg)
