@@ -231,14 +231,16 @@ public class MainHook implements IXposedHookLoadPackage {
                                     if ("none".equals(lightMode)) {
                                         if (!useSquircle && fillDiff) {
                                             Paint s = new Paint(Paint.ANTI_ALIAS_FLAG); s.setStyle(Paint.Style.FILL);
-                                            s.setColor(Color.argb(200,255,255,255));
-                                            canvas.drawRoundRect(0,0,w,h, r,r, s);
+                                            s.setColor(Color.argb(180,255,255,255));
+                                            canvas.drawRoundRect(0,0,w,h,r,r,s);
                                             s.setColor(Color.argb(0,255,255,255)); s.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
-                                            canvas.drawRoundRect(strokeW,strokeW,w-strokeW,h-strokeW, r-strokeW,r-strokeW, s); return;
+                                            canvas.drawRoundRect(strokeW,strokeW,w-strokeW,h-strokeW,r-strokeW,r-strokeW,s); return;
                                         } else {
-                                            Paint s = new Paint(Paint.ANTI_ALIAS_FLAG); s.setStyle(Paint.Style.STROKE);
-                                            s.setStrokeWidth((float)stdStrokeW); s.setColor(Color.argb(200,255,255,255));
-                                            canvas.drawRoundRect(1,1,w-1,h-1,r,r,s); return;
+                                            Paint s = new Paint(Paint.ANTI_ALIAS_FLAG); s.setStyle(Paint.Style.FILL);
+                                            s.setColor(Color.argb(180,255,255,255));
+                                            canvas.drawRoundRect(0,0,w,h,r,r,s);
+                                            s.setColor(Color.argb(0,255,255,255)); s.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
+                                            canvas.drawRoundRect(stdStrokeW,stdStrokeW,w-stdStrokeW,h-stdStrokeW,r-stdStrokeW,r-stdStrokeW,s); return;
                                         }
                                     }
 
