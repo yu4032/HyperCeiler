@@ -188,7 +188,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                         float strokeW = 6f;
                                         float off = SQUIRCLE_STROKE_OFF;
                                         // Outer: smaller control point for rounder corners at larger radius
-                                        Path outer = squirclePath(new RectF(-off, -off, w+off, h+off), r, 0.55f);
+                                        Path outer = squirclePath(new RectF(-off, -off, w+off, h+off), r, 0.58f);
                                         Path inner = squirclePath(new RectF(-off+strokeW, -off+strokeW, w+off-strokeW, h+off-strokeW), r - strokeW * 0.5f, 0.65f);
 
                                         Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
