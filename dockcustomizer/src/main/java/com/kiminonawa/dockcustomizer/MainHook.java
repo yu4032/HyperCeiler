@@ -128,6 +128,21 @@ public class MainHook implements IXposedHookLoadPackage {
                     }
                 });
 
+            // Hook MiShadowUtils.applyViewShadow to clip shadow to rounded corners
+            try {
+                Class<?> ms = XposedHelpers.findClass(
+                    "com.miui.home.launcher.common.MiShadowUtils", lpparam.classLoader);
+                XposedHelpers.findAndHookMethod(ms, "applyViewShadow",
+                    View.class, int.class, float.class, float.class, float.class, float.class,
+                    new XC_MethodHook() {
+                        @Override protected void afterHookedMethod(MethodHookParam p) {
+                            View v = (View) p.args[0];
+                            if (v == null) return;
+                            v.setClipToOutline(true);
+                        }
+                    });
+            } catch (Throwable ignored) {}
+
             // Hook updateRoundRect to always apply outline (bypass MiShadow check)
             XposedHelpers.findAndHookMethod(
                 "com.miui.home.launcher.hotseats.HotSeatsListContentBlurBackground2",
