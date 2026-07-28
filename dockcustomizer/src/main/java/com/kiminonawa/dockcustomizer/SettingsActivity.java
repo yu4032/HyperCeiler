@@ -16,8 +16,8 @@ import java.io.DataOutputStream;
 public class SettingsActivity extends Activity {
 
     private int mode = 1;
-    private EditText blurRadiusInput, heightOffsetInput, widthOffsetInput;
-    private int blurRadius = 100, heightOffset, widthOffset;
+    private EditText blurRadiusInput, heightOffsetInput, widthOffsetInput, cornerInput;
+    private int blurRadius = 100, heightOffset, widthOffset, cornerOffset = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,6 +73,12 @@ public class SettingsActivity extends Activity {
         widthOffsetInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
         layout.addView(widthOffsetInput);
 
+        layout.addView(label("Corner Radius Offset (px, negative=smaller)"));
+        cornerInput = new EditText(this);
+        cornerInput.setText(String.valueOf(sp.getInt("corner_offset", -1)));
+        cornerInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
+        layout.addView(cornerInput);
+
         Button apply = new Button(this);
         apply.setText("Apply & Restart Launcher");
         apply.setOnClickListener(v -> saveAndRestart());
@@ -96,21 +102,23 @@ public class SettingsActivity extends Activity {
             int br = Integer.parseInt(blurRadiusInput.getText().toString().trim());
             int ho = Integer.parseInt(heightOffsetInput.getText().toString().trim());
             int wo = Integer.parseInt(widthOffsetInput.getText().toString().trim());
+            int co = Integer.parseInt(cornerInput.getText().toString().trim());
 
             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
             sp.edit().putString("light_mode", val)
                 .putInt("blur_radius", br)
                 .putInt("height_offset", ho)
                 .putInt("width_offset", wo)
+                .putInt("corner_offset", co)
                 .commit();
 
-            // Write settings via root
             Process p = Runtime.getRuntime().exec("su");
             DataOutputStream os = new DataOutputStream(p.getOutputStream());
             os.writeBytes("echo '" + val + "' > /sdcard/dock_light.txt\n");
             os.writeBytes("echo '" + br + "' > /sdcard/dock_blur_radius.txt\n");
             os.writeBytes("echo '" + ho + "' > /sdcard/dock_height_offset.txt\n");
             os.writeBytes("echo '" + wo + "' > /sdcard/dock_width_offset.txt\n");
+            os.writeBytes("echo '" + co + "' > /sdcard/dock_corner_offset.txt\n");
             os.writeBytes("am force-stop com.miui.home\n");
             os.writeBytes("sleep 1\n");
             os.writeBytes("am start -n com.miui.home/.launcher.Launcher\n");

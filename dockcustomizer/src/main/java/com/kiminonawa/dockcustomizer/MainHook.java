@@ -25,12 +25,11 @@ public class MainHook implements IXposedHookLoadPackage {
     private static View overlay;
     private static int bgW, bgH;
     private static float bgR = 30f;
-    private static final float RADIUS_OFFSET = -1f;
     private static float gyroX, gyroY;
     private static long gyroTime;
     private static String lightMode = "fixed";
     private static int blurRadius = 100;
-    private static int heightOffset, widthOffset;
+    private static int heightOffset, widthOffset, cornerOffset = -1;
 
     private static int readInt(String path, int def) {
         try {
@@ -65,6 +64,7 @@ public class MainHook implements IXposedHookLoadPackage {
         blurRadius = readInt("/sdcard/dock_blur_radius.txt", 100);
         heightOffset = readInt("/sdcard/dock_height_offset.txt", 0);
         widthOffset = readInt("/sdcard/dock_width_offset.txt", 0);
+        cornerOffset = readInt("/sdcard/dock_corner_offset.txt", -1);
         XposedBridge.log("[DC] mode=" + lightMode + " blur=" + blurRadius + " ho=" + heightOffset + " wo=" + widthOffset);
 
         try {
@@ -144,7 +144,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                 @Override
                                 protected void onDraw(Canvas canvas) {
                                     if (bgW < 1 || bgH < 1) return;
-                                    float w = bgW, h = bgH, r = Math.max(0, bgR + RADIUS_OFFSET);
+                                    float w = bgW, h = bgH, r = Math.max(0, bgR + cornerOffset);
                                     float maxDim = Math.max(w, h);
 
                                     if ("none".equals(lightMode)) {
