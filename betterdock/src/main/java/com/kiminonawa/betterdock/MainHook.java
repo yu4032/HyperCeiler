@@ -151,6 +151,20 @@ public class MainHook implements IXposedHookLoadPackage {
                             ViewGroup parent = (ViewGroup)oldBg.getParent();
                             if (parent == null) return;
 
+                            // --- Trigger HyperLight via stubbed MiuixMaterialBlurUtilities ---
+                            if ("1".equals(readStr("/sdcard/dock_use_hl.txt", "0"))) {
+                                try {
+                                    Class<?> mmbu = lpparam.classLoader.loadClass(
+                                        "com.miui.home.common.utils.MiuixMaterialBlurUtilities");
+                                    mmbu.getMethod("applyMaterialBlur", View.class, Runnable.class, Runnable.class)
+                                        .invoke(null, oldBg, null, null);
+                                    XposedBridge.log("[DC] HyperLight proxy: OK");
+                                    return;
+                                } catch (Throwable e) {
+                                    XposedBridge.log("[DC] HyperLight proxy: " + e.getClass().getSimpleName());
+                                }
+                            }
+
                             int gravity = ((FrameLayout.LayoutParams)oldBg.getLayoutParams()).gravity;
 
                             // Liquid Glass overlay (behind bloom, above blur bg)
