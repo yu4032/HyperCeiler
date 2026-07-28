@@ -33,7 +33,7 @@ public class MainHook implements IXposedHookLoadPackage {
     private static String lightMode = "fixed";
     private static int blurRadius = 100;
     private static int heightOffset, widthOffset, cornerOffset = -1;
-    private static final int SQUIRCLE_STROKE_OFF = 5;
+    private static final int SQUIRCLE_STROKE_OFF = 8;
     private static boolean useSquircle;
 
     private static int readInt(String path, int def) {
