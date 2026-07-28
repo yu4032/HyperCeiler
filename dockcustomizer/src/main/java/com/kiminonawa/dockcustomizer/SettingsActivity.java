@@ -90,6 +90,40 @@ public class SettingsActivity extends Activity {
         sqOff.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
         layout.addView(sqOff);
 
+        // Preset buttons
+        LinearLayout presetRow = new LinearLayout(this);
+        presetRow.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button miBtn = new Button(this);
+        miBtn.setText("Xiaomi Default");
+        miBtn.setOnClickListener(v -> {
+            mode = 1; // fixed
+            blurRadiusInput.setText("100");
+            heightOffsetInput.setText("0");
+            widthOffsetInput.setText("0");
+            cornerInput.setText("-1");
+            sq.setChecked(false);
+            sqOff.setText("3");
+            // reset radio
+            ((RadioButton) ((RadioGroup) ((LinearLayout) miBtn.getParent().getParent()).getChildAt(1)).getChildAt(1)).setChecked(true);
+        });
+        presetRow.addView(miBtn);
+
+        Button ipadBtn = new Button(this);
+        ipadBtn.setText("iPad Default");
+        ipadBtn.setOnClickListener(v -> {
+            mode = 1; // fixed
+            blurRadiusInput.setText("120");
+            heightOffsetInput.setText("1");
+            widthOffsetInput.setText("1");
+            cornerInput.setText("0");
+            sq.setChecked(true);
+            sqOff.setText("5");
+            ((RadioButton) ((RadioGroup) ((LinearLayout) ipadBtn.getParent().getParent()).getChildAt(1)).getChildAt(1)).setChecked(true);
+        });
+        presetRow.addView(ipadBtn);
+        layout.addView(presetRow);
+
         Button apply = new Button(this);
         apply.setText("Apply & Restart Launcher");
         apply.setOnClickListener(v -> {
