@@ -128,21 +128,28 @@ public class MainHook implements IXposedHookLoadPackage {
                     }
                 });
 
-            // Hook updateRoundRect to use squircle outline
+            // Hook updateRoundRect to always apply outline (bypass MiShadow check)
             XposedHelpers.findAndHookMethod(
                 "com.miui.home.launcher.hotseats.HotSeatsListContentBlurBackground2",
                 lpparam.classLoader, "updateRoundRect", int.class, int.class, float.class,
                 new XC_MethodHook() {
                     @Override protected void afterHookedMethod(MethodHookParam p) {
+                        View v = (View) p.thisObject;
+                        final int w = (Integer) p.args[0];
+                        final int h = (Integer) p.args[1];
+                        final float r = (Float) p.args[2];
+                        v.setClipToOutline(true);
                         if (useSquircle) {
-                            View v = (View) p.thisObject;
-                            final int w = (Integer) p.args[0];
-                            final int h = (Integer) p.args[1];
-                            final float r = (Float) p.args[2];
+                            Path sp = squirclePath(new RectF(0, 0, w, h), r);
                             v.setOutlineProvider(new android.view.ViewOutlineProvider() {
-                                @Override public void getOutline(View v, Outline o) {
-                                    Path sp = squirclePath(new RectF(0, 0, w, h), r);
+                                @Override public void getOutline(View vv, Outline o) {
                                     o.setPath(sp);
+                                }
+                            });
+                        } else {
+                            v.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                                @Override public void getOutline(View vv, Outline o) {
+                                    o.setRoundRect(0, 0, w, h, r);
                                 }
                             });
                         }
