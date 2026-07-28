@@ -8,7 +8,6 @@ import android.graphics.Path;
 import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.RenderEffect;
-import android.graphics.RuntimeShader;
 import android.graphics.Shader;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -162,33 +161,11 @@ public class MainHook implements IXposedHookLoadPackage {
                                         else canvas.drawRoundRect(0,0,w,h, r,r, p);
                                     }
                                 };
-                                // GPU lens distortion: non-linear edge warping via RuntimeShader
-                                float distort = blurRadius / 40f; // 200→5, stronger = more warp
-                                String shader = 
-                                    "uniform shader content;\n" +
-                                    "uniform float strength;\n" +
-                                    "uniform float w;\n" +
-                                    "uniform float h;\n" +
-                                    "vec4 main(vec2 coord) {\n" +
-                                    "  vec2 center = vec2(w/2.0, h/2.0);\n" +
-                                    "  vec2 delta = (coord - center) / vec2(w, h);\n" +
-                                    "  float dist = length(delta) * 2.0;\n" +
-                                    "  float displacement = strength * pow(dist, 4.0);\n" + // non-linear: d^4
-                                    "  vec2 warped = coord - normalize(delta + 0.001) * displacement * 30.0;\n" +
-                                    "  return content.eval(warped);\n" +
-                                    "}";
-                                RuntimeShader rs = new RuntimeShader(shader);
-                                rs.setFloatUniform("strength", distort);
-                                rs.setFloatUniform("w", 1000f);
-                                rs.setFloatUniform("h", 500f);
-                                RenderEffect lensDistort = RenderEffect.createRuntimeShaderEffect(rs, "content");
-
-                                // Chain: blur → lens distortion
+                                // GPU anisotropic blur (HyperLight-style chromium look)
                                 int blurH = blurRadius / 6;
                                 int blurV = blurRadius / 4;
-                                RenderEffect blur = RenderEffect.createBlurEffect(blurH, blurV, Shader.TileMode.CLAMP);
                                 glassOverlay.setRenderEffect(
-                                    RenderEffect.createChainEffect(lensDistort, blur));
+                                    RenderEffect.createBlurEffect(blurH, blurV, Shader.TileMode.CLAMP));
                                 glassOverlay.setId(View.generateViewId());
                                 parent.addView(glassOverlay, parent.indexOfChild(oldBg)+1,
                                     new FrameLayout.LayoutParams(-1, -1, gravity));
