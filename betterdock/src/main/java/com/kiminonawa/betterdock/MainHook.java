@@ -153,19 +153,7 @@ public class MainHook implements IXposedHookLoadPackage {
 
                             int gravity = ((FrameLayout.LayoutParams)oldBg.getLayoutParams()).gravity;
 
-                            // --- Delegate to HyperLight liquid glass ---
-                            try {
-                                float density = oldBg.getResources().getDisplayMetrics().density;
-                                Class<?> ce0 = XposedHelpers.findClass("defpackage.ce0", lpparam.classLoader);
-                                ce0.getMethod("c", View.class, Float.TYPE, String.class, Integer.TYPE)
-                                    .invoke(null, oldBg, density * 30f, "desktop", 0);
-                                XposedBridge.log("[DC] delegated to HyperLight liquid glass");
-                                return;
-                            } catch (Throwable e) {
-                                XposedBridge.log("[DC] HyperLight delegation failed: " + e.getClass().getSimpleName());
-                            }
-
-                            // Our own rendering below...
+                            // Liquid Glass overlay (behind bloom, above blur bg)
                             if (liquidGlass && glassOverlay == null && lgBgOn) {
                                 glassOverlay = new View(oldBg.getContext()) {
                                     @Override protected void onDraw(Canvas canvas) {
