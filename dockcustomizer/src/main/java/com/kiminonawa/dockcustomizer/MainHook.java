@@ -178,7 +178,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                 protected void onDraw(Canvas canvas) {
                                     if (bgW < 1 || bgH < 1) return;
                                     float w = bgW, h = bgH;
-                                    float r = Math.max(0, useSquircle ? bgR + 1f : bgR - 1f);
+                                    float r = Math.max(0, useSquircle ? bgR + 3f : bgR - 1f);
                                     float maxDim = Math.max(w, h);
 
                                     if ("none".equals(lightMode)) {
