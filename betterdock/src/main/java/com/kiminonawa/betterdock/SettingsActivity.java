@@ -136,7 +136,28 @@ public class SettingsActivity extends Activity {
         sq.setOnCheckedChangeListener((cb, checked) -> sqGroup.setVisibility(checked ? View.VISIBLE : View.GONE));
         layout.addView(sq); layout.addView(sqGroup);
 
-        // Presets
+        // Standard round-rect stroke settings (visible when squircle is off)
+        CheckBox fdCheck = new CheckBox(this);
+        fdCheck.setText("Fill-Diff Stroke (crisp anti-alias)");
+        fdCheck.setChecked(sp.getBoolean("fill_diff", false));
+
+        LinearLayout fdGroup = new LinearLayout(this); fdGroup.setOrientation(LinearLayout.VERTICAL);
+        fdGroup.addView(label("Stroke Width (px)"));
+        EditText strokeWInput = new EditText(this);
+        strokeWInput.setText(String.valueOf(sp.getInt("stroke_w", 2)));
+        strokeWInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        fdGroup.addView(strokeWInput);
+        fdGroup.setVisibility(!sq.isChecked() ? View.VISIBLE : View.GONE);
+        fdGroup.setVisibility(fdCheck.isChecked() ? View.VISIBLE : View.GONE);
+        sq.setOnCheckedChangeListener((cb, checked) -> {
+            sqGroup.setVisibility(checked ? View.VISIBLE : View.GONE);
+            fdGroup.setVisibility(!checked ? View.VISIBLE : View.GONE);
+        });
+        fdCheck.setOnCheckedChangeListener((cb, checked) -> {
+            if (!sq.isChecked()) fdGroup.setVisibility(checked ? View.VISIBLE : View.GONE);
+        });
+
+        layout.addView(fdCheck); layout.addView(fdGroup);
         LinearLayout presetRow = new LinearLayout(this); presetRow.setOrientation(LinearLayout.HORIZONTAL);
         Button miBtn = new Button(this); miBtn.setText("Xiaomi Default");
         miBtn.setOnClickListener(v -> {
@@ -179,6 +200,8 @@ public class SettingsActivity extends Activity {
                 String lgTint = lgTintInput.getText().toString().trim();
                 int lgBlur = Integer.parseInt(lgBlurInput.getText().toString().trim());
                 boolean lgBg = lgBgCheck.isChecked();
+                boolean fillDiff = fdCheck.isChecked();
+                int strokeW = Integer.parseInt(strokeWInput.getText().toString().trim());
 
                 sp.edit().putString("light_mode", val)
                     .putInt("blur_radius", br).putInt("height_offset", ho)
@@ -186,7 +209,8 @@ public class SettingsActivity extends Activity {
                     .putBoolean("squircle", squircle)
                     .putInt("sq_stroke_w", sw).putInt("sq_stroke_off", so).putInt("sq_outer_cp", cp)
                     .putBoolean("liquid_glass", lg).putString("lg_tint", lgTint).putInt("lg_alpha", lgAlpha)
-                    .putInt("lg_blur_scale", lgBlur).putBoolean("lg_bg_on", lgBg).commit();
+                    .putInt("lg_blur_scale", lgBlur).putBoolean("lg_bg_on", lgBg)
+                    .putBoolean("fill_diff", fillDiff).putInt("stroke_w", strokeW).commit();
 
                 Process p = Runtime.getRuntime().exec("su");
                 DataOutputStream os = new DataOutputStream(p.getOutputStream());
@@ -204,6 +228,8 @@ public class SettingsActivity extends Activity {
                 os.writeBytes("echo '" + lgTint + "' > /sdcard/dock_lg_tint.txt\n");
                 os.writeBytes("echo '" + lgBlur + "' > /sdcard/dock_lg_blur_scale.txt\n");
                 os.writeBytes("echo '" + (lgBg ? "1" : "0") + "' > /sdcard/dock_lg_bg.txt\n");
+                os.writeBytes("echo '" + (fillDiff ? "1" : "0") + "' > /sdcard/dock_fill_diff.txt\n");
+                os.writeBytes("echo '" + strokeW + "' > /sdcard/dock_stroke_w.txt\n");
                 os.writeBytes("am force-stop com.miui.home\nsleep 1\n");
                 os.writeBytes("am start -n com.miui.home/.launcher.Launcher\nexit\n");
                 os.flush(); p.waitFor();
