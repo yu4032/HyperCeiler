@@ -71,6 +71,11 @@ public class SettingsActivity extends Activity {
         lgAlphaInput.setText(String.valueOf(sp.getInt("lg_alpha", 80)));
         lgAlphaInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         lgGroup.addView(lgAlphaInput);
+        lgGroup.addView(label("Capture Scale (1-8, lower=more blur)"));
+        EditText lgBlurInput = new EditText(this);
+        lgBlurInput.setText(String.valueOf(sp.getInt("lg_blur_scale", 4)));
+        lgBlurInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        lgGroup.addView(lgBlurInput);
         lgGroup.setVisibility(lgCheck.isChecked() ? View.VISIBLE : View.GONE);
         lgCheck.setOnCheckedChangeListener((cb, checked) -> lgGroup.setVisibility(checked ? View.VISIBLE : View.GONE));
 
@@ -166,6 +171,7 @@ public class SettingsActivity extends Activity {
                 boolean lg = lgCheck.isChecked();
                 int lgAlpha = Integer.parseInt(lgAlphaInput.getText().toString().trim());
                 String lgTint = lgTintInput.getText().toString().trim();
+                int lgBlur = Integer.parseInt(lgBlurInput.getText().toString().trim());
 
                 sp.edit().putString("light_mode", val)
                     .putInt("blur_radius", br).putInt("height_offset", ho)
@@ -173,7 +179,7 @@ public class SettingsActivity extends Activity {
                     .putBoolean("squircle", squircle)
                     .putInt("sq_stroke_w", sw).putInt("sq_stroke_off", so).putInt("sq_outer_cp", cp)
                     .putBoolean("liquid_glass", lg).putString("lg_tint", lgTint).putInt("lg_alpha", lgAlpha)
-                    .commit();
+                    .putInt("lg_blur_scale", lgBlur).commit();
 
                 Process p = Runtime.getRuntime().exec("su");
                 DataOutputStream os = new DataOutputStream(p.getOutputStream());
@@ -189,6 +195,7 @@ public class SettingsActivity extends Activity {
                 os.writeBytes("echo '" + (lg ? "1" : "0") + "' > /sdcard/dock_lg.txt\n");
                 os.writeBytes("echo '" + lgAlpha + "' > /sdcard/dock_lg_alpha.txt\n");
                 os.writeBytes("echo '" + lgTint + "' > /sdcard/dock_lg_tint.txt\n");
+                os.writeBytes("echo '" + lgBlur + "' > /sdcard/dock_lg_blur_scale.txt\n");
                 os.writeBytes("am force-stop com.miui.home\nsleep 1\n");
                 os.writeBytes("am start -n com.miui.home/.launcher.Launcher\nexit\n");
                 os.flush(); p.waitFor();
