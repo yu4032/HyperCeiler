@@ -32,7 +32,7 @@ public class MainHook implements IXposedHookLoadPackage {
     private static long gyroTime;
     private static String lightMode = "fixed";
     private static int blurRadius = 100;
-    private static int heightOffset, widthOffset, cornerOffset = -1;
+    private static int heightOffset, widthOffset, cornerOffset = -1, squircleStrokeOffset = 3;
     private static boolean useSquircle;
 
     private static int readInt(String path, int def) {
@@ -69,6 +69,7 @@ public class MainHook implements IXposedHookLoadPackage {
         heightOffset = readInt("/sdcard/dock_height_offset.txt", 0);
         widthOffset = readInt("/sdcard/dock_width_offset.txt", 0);
         cornerOffset = readInt("/sdcard/dock_corner_offset.txt", -1);
+        squircleStrokeOffset = readInt("/sdcard/dock_sq_stroke_off.txt", 3);
         useSquircle = "1".equals(readStr("/sdcard/dock_squircle.txt", "0"));
         XposedBridge.log("[DC] mode=" + lightMode + " blur=" + blurRadius + " ho=" + heightOffset + " wo=" + widthOffset);
 
@@ -178,7 +179,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                 protected void onDraw(Canvas canvas) {
                                     if (bgW < 1 || bgH < 1) return;
                                     float w = bgW, h = bgH;
-                                    float r = Math.max(0, useSquircle ? bgR + 3f : bgR - 1f);
+                                    float r = Math.max(0, useSquircle ? bgR + squircleStrokeOffset : bgR - 1f);
                                     float maxDim = Math.max(w, h);
 
                                     if ("none".equals(lightMode)) {

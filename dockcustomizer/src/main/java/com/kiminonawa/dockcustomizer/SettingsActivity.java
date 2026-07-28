@@ -84,6 +84,12 @@ public class SettingsActivity extends Activity {
         sq.setChecked(sp.getBoolean("squircle", false));
         layout.addView(sq);
 
+        layout.addView(label("Squircle Stroke Offset (px)"));
+        EditText sqOff = new EditText(this);
+        sqOff.setText(String.valueOf(sp.getInt("sq_stroke_off", 3)));
+        sqOff.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
+        layout.addView(sqOff);
+
         Button apply = new Button(this);
         apply.setText("Apply & Restart Launcher");
         apply.setOnClickListener(v -> {
@@ -93,12 +99,13 @@ public class SettingsActivity extends Activity {
                 int ho = Integer.parseInt(heightOffsetInput.getText().toString().trim());
                 int wo = Integer.parseInt(widthOffsetInput.getText().toString().trim());
                 int co = Integer.parseInt(cornerInput.getText().toString().trim());
+                int sso = Integer.parseInt(sqOff.getText().toString().trim());
                 boolean squircle = sq.isChecked();
 
                 sp.edit().putString("light_mode", val)
                     .putInt("blur_radius", br).putInt("height_offset", ho)
                     .putInt("width_offset", wo).putInt("corner_offset", co)
-                    .putBoolean("squircle", squircle).commit();
+                    .putBoolean("squircle", squircle).putInt("sq_stroke_off", sso).commit();
 
                 Process p = Runtime.getRuntime().exec("su");
                 DataOutputStream os = new DataOutputStream(p.getOutputStream());
@@ -107,6 +114,7 @@ public class SettingsActivity extends Activity {
                 os.writeBytes("echo '" + ho + "' > /sdcard/dock_height_offset.txt\n");
                 os.writeBytes("echo '" + wo + "' > /sdcard/dock_width_offset.txt\n");
                 os.writeBytes("echo '" + co + "' > /sdcard/dock_corner_offset.txt\n");
+                os.writeBytes("echo '" + sso + "' > /sdcard/dock_sq_stroke_off.txt\n");
                 os.writeBytes("echo '" + (squircle ? "1" : "0") + "' > /sdcard/dock_squircle.txt\n");
                 os.writeBytes("am force-stop com.miui.home\nsleep 1\n");
                 os.writeBytes("am start -n com.miui.home/.launcher.Launcher\nexit\n");
