@@ -153,36 +153,71 @@ public class MainHook implements IXposedHookLoadPackage {
                                 glassOverlay = new View(oldBg.getContext()) {
                                     private Bitmap capBmp;
                                     private long lastCap;
+                                    private int tryFallback;
+
+                                    private Bitmap captureDisplay(View v) {
+                                        try {
+                                            Class<?> wmg = Class.forName("android.view.WindowManagerGlobal");
+                                            Object wms = wmg.getMethod("getWindowManagerService").invoke(null);
+                                            Class<?> sc = Class.forName("android.window.ScreenCapture");
+                                            Class<?> capArgs = Class.forName("android.window.ScreenCapture$CaptureArgs");
+                                            Class<?> build = Class.forName("android.window.ScreenCapture$CaptureArgs$Builder");
+                                            Class<?> sync = Class.forName("android.window.ScreenCapture$SynchronousScreenCaptureListener");
+                                            Class<?> buffer = Class.forName("android.window.ScreenCapture$ScreenshotHardwareBuffer");
+
+                                            Object builder = build.getConstructor().newInstance();
+                                            float scale = 0.25f;
+                                            build.getMethod("setFrameScale", Float.TYPE, Float.TYPE).invoke(builder, scale, scale);
+                                            int[] loc = new int[2];
+                                            v.getLocationOnScreen(loc);
+                                            // setSourceRect is API 34+, try with reflection
+                                            try {
+                                                Class<?> rect = Class.forName("android.graphics.Rect");
+                                                Object r = rect.getConstructor(Integer.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE)
+                                                    .newInstance(loc[0], loc[1], loc[0] + v.getWidth(), loc[1] + v.getHeight());
+                                                build.getMethod("setSourceRect", rect).invoke(builder, r);
+                                            } catch (Throwable e) {
+                                                // setSourceRect not available, capture full display
+                                            }
+                                            Object args = build.getMethod("build").invoke(builder);
+                                            Object syncListener = sc.getMethod("createSyncCaptureListener").invoke(null);
+
+                                            wms.getClass().getMethod("captureDisplay", Integer.TYPE, capArgs, 
+                                                Class.forName("android.window.ScreenCapture$ScreenCaptureListener"))
+                                                .invoke(wms, 0, args, syncListener);
+
+                                            Object hwBuf = sync.getClass().getMethod("getBuffer").invoke(syncListener);
+                                            Bitmap bmp = (Bitmap) buffer.getMethod("asBitmap").invoke(hwBuf);
+                                            if (bmp != null) {
+                                                return Bitmap.createScaledBitmap(bmp, v.getWidth()/3, v.getHeight()/3, true);
+                                            }
+                                        } catch (Throwable e) {
+                                            XposedBridge.log("[DC] captureDisplay failed: " + e.getClass().getSimpleName());
+                                        }
+                                        return null;
+                                    }
+
                                     @Override protected void onDraw(Canvas canvas) {
                                         if (bgW < 1 || bgH < 1) return;
                                         float w = bgW, h = bgH, r = Math.max(0, bgR);
                                         int a = Color.alpha(lgTint) * lgAlpha / 255;
 
-                                        // Screen capture: draw what's behind us at reduced scale
                                         long now = System.currentTimeMillis();
-                                        if (now - lastCap > 200) { // 5fps capture
-                                            try {
-                                                int sw = Math.max(1, (int)(w / 8)); // 12.5% scale
-                                                int sh = Math.max(1, (int)(h / 8));
-                                                if (capBmp == null || capBmp.getWidth() != sw || capBmp.getHeight() != sh) {
-                                                    if (capBmp != null) capBmp.recycle();
-                                                    capBmp = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888);
-                                                }
-                                                Canvas cc = new Canvas(capBmp);
-                                                cc.scale(1f/8f, 1f/8f);
-                                                int[] loc = new int[2];
-                                                oldBg.getLocationOnScreen(loc);
-                                                View root = oldBg.getRootView();
-                                                cc.translate(-loc[0], -loc[1]);
-                                                root.draw(cc);
-                                                lastCap = now;
-                                            } catch (Throwable ignored) {}
+                                        if (now - lastCap > 500 && tryFallback < 3) {
+                                            Bitmap b = captureDisplay(oldBg);
+                                            if (b != null) {
+                                                if (capBmp != null && !capBmp.isRecycled()) capBmp.recycle();
+                                                capBmp = b;
+                                                XposedBridge.log("[DC] capture: " + capBmp.getWidth() + "x" + capBmp.getHeight());
+                                            } else {
+                                                tryFallback++;
+                                            }
+                                            lastCap = now;
                                         }
 
-                                        // Draw captured + scaled up background (bilinear = blur)
                                         if (capBmp != null && !capBmp.isRecycled()) {
                                             Paint bp = new Paint(Paint.FILTER_BITMAP_FLAG);
-                                            bp.setAlpha(lgAlpha);
+                                            bp.setAlpha(180);
                                             if (useSquircle) {
                                                 canvas.save();
                                                 canvas.clipPath(squirclePath(new RectF(0,0,w,h), r));
@@ -196,7 +231,6 @@ public class MainHook implements IXposedHookLoadPackage {
                                             }
                                         }
 
-                                        // Tint overlay
                                         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
                                         p.setColor(Color.argb(a, Color.red(lgTint), Color.green(lgTint), Color.blue(lgTint)));
                                         if (useSquircle) canvas.drawPath(squirclePath(new RectF(0,0,w,h), r), p);
