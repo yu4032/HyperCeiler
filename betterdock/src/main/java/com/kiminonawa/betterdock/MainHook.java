@@ -3,7 +3,6 @@ package com.kiminonawa.betterdock;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RadialGradient;
@@ -151,104 +150,26 @@ public class MainHook implements IXposedHookLoadPackage {
                             // Liquid Glass overlay (behind bloom, above blur bg)
                             if (liquidGlass && glassOverlay == null) {
                                 glassOverlay = new View(oldBg.getContext()) {
-                                    private Bitmap capBmp;
-                                    private long lastCap;
-                                    private int tryFallback;
-
-                                    private Bitmap captureDisplay(View v) {
-                                        try {
-                                            Class<?> iwm = Class.forName("android.view.IWindowManager");
-                                            Class<?> wmg = Class.forName("android.view.WindowManagerGlobal");
-                                            Object wms = wmg.getMethod("getWindowManagerService").invoke(null);
-                                            
-                                            Class<?> builderCls = Class.forName("android.window.ScreenCapture$CaptureArgs$Builder");
-                                            Class<?> argsCls = Class.forName("android.window.ScreenCapture$CaptureArgs");
-                                            Class<?> listenerCls = Class.forName("android.window.ScreenCapture$ScreenCaptureListener");
-                                            Class<?> syncCls = Class.forName("android.window.ScreenCapture$SynchronousScreenCaptureListener");
-                                            Class<?> bufCls = Class.forName("android.window.ScreenCapture$ScreenshotHardwareBuffer");
-                                            
-                                            Object builder = builderCls.getConstructor().newInstance();
-                                            float scale = 0.25f;
-                                            builderCls.getMethod("setFrameScale", Float.TYPE, Float.TYPE).invoke(builder, scale, scale);
-                                            
-                                            Object args = builderCls.getMethod("build").invoke(builder);
-                                            
-                                            java.lang.reflect.Method captureMethod = iwm.getMethod("captureDisplay", 
-                                                Integer.TYPE, argsCls, listenerCls);
-                                            
-                                            Object syncListener = Class.forName("android.window.ScreenCapture")
-                                                .getMethod("createSyncCaptureListener").invoke(null);
-                                            
-                                            captureMethod.invoke(wms, 0, args, syncListener);
-                                            
-                                            Object hwBuf = syncCls.getMethod("getBuffer").invoke(syncListener);
-                                            if (hwBuf != null) {
-                                                Bitmap full = (Bitmap) bufCls.getMethod("asBitmap").invoke(hwBuf);
-                                                if (full != null) {
-                                                    // Crop to dock area
-                                                    int[] loc = new int[2];
-                                                    v.getLocationOnScreen(loc);
-                                                    int sx = Math.max(0, (int)(loc[0] * scale));
-                                                    int sy = Math.max(0, (int)(loc[1] * scale));
-                                                    int sw = Math.min(full.getWidth() - sx, (int)(v.getWidth() * scale));
-                                                    int sh = Math.min(full.getHeight() - sy, (int)(v.getHeight() * scale));
-                                                    if (sw > 0 && sh > 0) {
-                                                        Bitmap crop = Bitmap.createBitmap(full, sx, sy, sw, sh);
-                                                        if (!full.isRecycled()) full.recycle();
-                                                        return Bitmap.createScaledBitmap(crop, v.getWidth()/4, v.getHeight()/4, true);
-                                                    }
-                                                    if (!full.isRecycled()) full.recycle();
-                                                }
-                                            }
-                                        } catch (Throwable e) {
-                                            XposedBridge.log("[DC] capture: " + e.getClass().getSimpleName());
-                                        }
-                                        return null;
-                                    }
-
                                     @Override protected void onDraw(Canvas canvas) {
+                                        // GPU blur handles rendering — just draw tint
                                         if (bgW < 1 || bgH < 1) return;
                                         float w = bgW, h = bgH, r = Math.max(0, bgR);
                                         int a = Color.alpha(lgTint) * lgAlpha / 255;
-
-                                        long now = System.currentTimeMillis();
-                                        if (now - lastCap > 500 && tryFallback < 3) {
-                                            Bitmap b = captureDisplay(oldBg);
-                                            if (b != null) {
-                                                if (capBmp != null && !capBmp.isRecycled()) capBmp.recycle();
-                                                capBmp = b;
-                                                XposedBridge.log("[DC] capture: " + capBmp.getWidth() + "x" + capBmp.getHeight());
-                                            } else {
-                                                tryFallback++;
-                                            }
-                                            lastCap = now;
-                                        }
-
-                                        if (capBmp != null && !capBmp.isRecycled()) {
-                                            Paint bp = new Paint(Paint.FILTER_BITMAP_FLAG);
-                                            bp.setAlpha(180);
-                                            if (useSquircle) {
-                                                canvas.save();
-                                                canvas.clipPath(squirclePath(new RectF(0,0,w,h), r));
-                                                canvas.drawBitmap(capBmp, null, new RectF(0,0,w,h), bp);
-                                                canvas.restore();
-                                            } else {
-                                                canvas.save();
-                                                canvas.clipRect(0,0,w,h);
-                                                canvas.drawBitmap(capBmp, null, new RectF(0,0,w,h), bp);
-                                                canvas.restore();
-                                            }
-                                        }
-
                                         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
                                         p.setColor(Color.argb(a, Color.red(lgTint), Color.green(lgTint), Color.blue(lgTint)));
                                         if (useSquircle) canvas.drawPath(squirclePath(new RectF(0,0,w,h), r), p);
                                         else canvas.drawRoundRect(0,0,w,h, r,r, p);
                                     }
                                 };
+                                // GPU anisotropic blur (HyperLight-style chromium look)
+                                int blurH = blurRadius / 6;
+                                int blurV = blurRadius / 4;
+                                glassOverlay.setRenderEffect(
+                                    RenderEffect.createBlurEffect(blurH, blurV, Shader.TileMode.CLAMP));
                                 glassOverlay.setId(View.generateViewId());
                                 parent.addView(glassOverlay, parent.indexOfChild(oldBg)+1,
                                     new FrameLayout.LayoutParams(-1, -1, gravity));
+                                XposedBridge.log("[DC] GPU blur: " + blurH + "x" + blurV);
                             }
 
                             // Bloom overlay
