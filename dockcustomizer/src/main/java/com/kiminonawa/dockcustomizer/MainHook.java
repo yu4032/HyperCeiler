@@ -183,6 +183,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                     float maxDim = Math.max(w, h);
 
                                     // Squircle stroke: fill outer - fill inner = perfect edge
+                                    // Squircle stroke: fill outer - fill inner = perfect edge
                                     if (useSquircle) {
                                         float strokeW = 6f;
                                         float off = SQUIRCLE_STROKE_OFF;
@@ -192,8 +193,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                         Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
                                         fill.setStyle(Paint.Style.FILL);
 
-                                        String mode = lightMode;
-                                        if ("none".equals(mode)) {
+                                        if ("none".equals(lightMode)) {
                                             fill.setColor(Color.argb(200, 255, 255, 255));
                                             canvas.drawPath(outer, fill);
                                             fill.setColor(Color.argb(0, 255, 255, 255));
@@ -207,8 +207,8 @@ public class MainHook implements IXposedHookLoadPackage {
                                         fill.setColor(Color.argb(0, 255, 255, 255));
                                         canvas.drawPath(inner, fill);
 
-                                        // Source highlight on squircle
-                                        boolean dyn = "dynamic".equals(mode);
+                                        // Source highlight
+                                        boolean dyn = "dynamic".equals(lightMode);
                                         float s1x = dyn ? w*(0.5f+gyroY*0.3f) : w*0.5f;
                                         float s1y = dyn ? h*(0.5f+gyroX*0.3f) : h*0.5f;
                                         Paint s1p = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -221,6 +221,14 @@ public class MainHook implements IXposedHookLoadPackage {
                                         canvas.drawPath(outer, s1p);
                                         fill.setColor(Color.argb(0, 255, 255, 255));
                                         canvas.drawPath(inner, fill);
+                                        return;
+                                    }
+
+                                    if ("none".equals(lightMode)) {
+                                        Paint s = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                        s.setStyle(Paint.Style.STROKE); s.setStrokeWidth(6f);
+                                        s.setColor(Color.argb(200, 255, 255, 255));
+                                        canvas.drawRoundRect(1, 1, w-1, h-1, r, r, s);
                                         return;
                                     }
 
