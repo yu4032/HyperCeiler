@@ -17,6 +17,8 @@ import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
+import java.io.File;
+import java.io.FileInputStream;
 
 public class MainHook implements IXposedHookLoadPackage {
 
@@ -27,33 +29,109 @@ public class MainHook implements IXposedHookLoadPackage {
     private static float gyroX, gyroY;
     private static long gyroTime;
     private static String lightMode = "fixed";
+    private static int blurRadius = 100;
+    private static int heightOffset, widthOffset;
+
+    private static int readInt(String path, int def) {
+        try {
+            File f = new File(path);
+            if (f.exists()) {
+                FileInputStream fis = new FileInputStream(f);
+                byte[] buf = new byte[16]; int len = fis.read(buf); fis.close();
+                return Integer.parseInt(new String(buf, 0, len).trim());
+            }
+        } catch (Throwable ignored) {}
+        return def;
+    }
+
+    private static String readStr(String path, String def) {
+        try {
+            File f = new File(path);
+            if (f.exists()) {
+                FileInputStream fis = new FileInputStream(f);
+                byte[] buf = new byte[16]; int len = fis.read(buf); fis.close();
+                return new String(buf, 0, len).trim();
+            }
+        } catch (Throwable ignored) {}
+        return def;
+    }
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
         if (!lpparam.packageName.equals("com.miui.home")) return;
         XposedBridge.log("[DC] load");
 
-        // Read config
-        try {
-            java.io.File cfg = new java.io.File("/sdcard/dock_light.txt");
-            if (cfg.exists()) {
-                java.io.FileInputStream fis = new java.io.FileInputStream(cfg);
-                byte[] buf = new byte[16];
-                int len = fis.read(buf);
-                fis.close();
-                lightMode = new String(buf, 0, len).trim();
-            }
-        } catch (Throwable ignored) {}
-        XposedBridge.log("[DC] mode=" + lightMode);
+        lightMode = readStr("/sdcard/dock_light.txt", "fixed");
+        blurRadius = readInt("/sdcard/dock_blur_radius.txt", 100);
+        heightOffset = readInt("/sdcard/dock_height_offset.txt", 0);
+        widthOffset = readInt("/sdcard/dock_width_offset.txt", 0);
+        XposedBridge.log("[DC] mode=" + lightMode + " blur=" + blurRadius + " ho=" + heightOffset + " wo=" + widthOffset);
 
         try {
+            // Hook setBackgroundWidth to apply width offset
+            XposedHelpers.findAndHookMethod(
+                "com.miui.home.launcher.hotseats.HotSeatsListContentBlurBackground2",
+                lpparam.classLoader, "setBackgroundWidth", int.class, new XC_MethodHook() {
+                    @Override protected void beforeHookedMethod(MethodHookParam p) {
+                        if (widthOffset != 0) {
+                            p.args[0] = ((Integer) p.args[0]) + widthOffset;
+                        }
+                    }
+                    @Override protected void afterHookedMethod(MethodHookParam p) { syncAll((View) p.thisObject); }
+                });
+
+            // Hook setBackgroundHeight to apply height offset
+            XposedHelpers.findAndHookMethod(
+                "com.miui.home.launcher.hotseats.HotSeatsListContentBlurBackground2",
+                lpparam.classLoader, "setBackgroundHeight", int.class, new XC_MethodHook() {
+                    @Override protected void beforeHookedMethod(MethodHookParam p) {
+                        if (heightOffset != 0) {
+                            p.args[0] = ((Integer) p.args[0]) + heightOffset;
+                        }
+                    }
+                    @Override protected void afterHookedMethod(MethodHookParam p) { syncAll((View) p.thisObject); }
+                });
+
+            XposedHelpers.findAndHookMethod(
+                "com.miui.home.launcher.hotseats.HotSeatsListContentBlurBackground2",
+                lpparam.classLoader, "setBackgroundRadius", float.class, mkRadiusHook());
+
+            // Hook addBlur to customize blur radius
+            XposedHelpers.findAndHookMethod(
+                "com.miui.home.launcher.hotseats.HotSeatsListContentBlurBackground2",
+                lpparam.classLoader, "addBlur", View.class, float.class, new XC_MethodHook() {
+                    @Override protected void beforeHookedMethod(MethodHookParam p) throws Throwable {
+                        // Override blur radius: the method calls
+                        // BlurUtilities.setBackgroundBlur(view, DeviceConfig.scaleMingouDockWidgetBigFolderBlurRadius(100), ...)
+                        // We hook the BlurUtilities.setBackgroundBlur instead
+                    }
+                });
+
+            // Hook BlurUtilities.setBackgroundBlur to override blur radius
+            try {
+                Class<?> bu = XposedHelpers.findClass(
+                    "com.miui.home.launcher.common.BlurUtilities", lpparam.classLoader);
+                XposedHelpers.findAndHookMethod(bu, "setBackgroundBlur",
+                    View.class, int.class, float[].class, int[][].class,
+                    new XC_MethodHook() {
+                        @Override protected void beforeHookedMethod(MethodHookParam p) {
+                            if (blurRadius != 100) {
+                                // Replace the blur radius parameter (was from DeviceConfig.scaleMingou...)
+                                p.args[1] = blurRadius;
+                            }
+                        }
+                    });
+            } catch (Throwable e) {
+                XposedBridge.log("[DC] blur hook: " + e.getMessage());
+            }
+
+            // setupViews: create overlay with edge bloom
             XposedHelpers.findAndHookMethod(
                 "com.miui.home.launcher.Launcher", lpparam.classLoader,
                 "setupViews", new XC_MethodHook() {
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) {
                         try {
-                            XposedBridge.log("[DC] setupViews");
                             if (overlay != null) return;
                             Object hotSeats = XposedHelpers.getObjectField(param.thisObject, "mHotSeats");
                             if (hotSeats == null) return;
@@ -62,7 +140,6 @@ public class MainHook implements IXposedHookLoadPackage {
                             ViewGroup parent = (ViewGroup) oldBg.getParent();
                             if (parent == null) return;
 
-                            XposedBridge.log("[DC] creating overlay");
                             overlay = new View(oldBg.getContext()) {
                                 @Override
                                 protected void onDraw(Canvas canvas) {
@@ -71,7 +148,6 @@ public class MainHook implements IXposedHookLoadPackage {
                                     float maxDim = Math.max(w, h);
 
                                     if ("none".equals(lightMode)) {
-                                        // Simple white line only
                                         Paint s = new Paint(Paint.ANTI_ALIAS_FLAG);
                                         s.setStyle(Paint.Style.STROKE);
                                         s.setStrokeWidth(6f);
@@ -84,14 +160,12 @@ public class MainHook implements IXposedHookLoadPackage {
                                     float s1x = dyn ? w * (0.5f + gyroY * 0.3f) : w * 0.5f;
                                     float s1y = dyn ? h * (0.5f + gyroX * 0.3f) : h * 0.5f;
 
-                                    // Base gray edge
                                     Paint base = new Paint(Paint.ANTI_ALIAS_FLAG);
                                     base.setStyle(Paint.Style.STROKE);
                                     base.setStrokeWidth(6f);
                                     base.setColor(Color.argb(120, 255, 255, 255));
                                     canvas.drawRoundRect(1, 1, w-1, h-1, r, r, base);
 
-                                    // RadialGradient highlight
                                     Paint s1p = new Paint(Paint.ANTI_ALIAS_FLAG);
                                     s1p.setStyle(Paint.Style.STROKE);
                                     s1p.setStrokeWidth(6f);
@@ -108,10 +182,8 @@ public class MainHook implements IXposedHookLoadPackage {
                                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT,
                                 ((FrameLayout.LayoutParams) oldBg.getLayoutParams()).gravity);
                             parent.addView(overlay, lp);
-                            XposedBridge.log("[DC] added overlay");
                             syncAll(oldBg);
 
-                            // Gyro only for dynamic mode
                             if ("dynamic".equals(lightMode)) {
                                 try {
                                     SensorManager sm = (SensorManager) oldBg.getContext()
@@ -134,22 +206,14 @@ public class MainHook implements IXposedHookLoadPackage {
                                             }
                                             @Override public void onAccuracyChanged(Sensor s, int a) {}
                                         }, gyro, SensorManager.SENSOR_DELAY_GAME);
-                                        XposedBridge.log("[DC] gyro registered");
                                     }
-                                } catch (Throwable e) {
-                                    XposedBridge.log("[DC] sensor: " + e.getMessage());
-                                }
+                                } catch (Throwable ignored) {}
                             }
                         } catch (Throwable e) {
                             XposedBridge.log("[DC] err: " + e.getClass().getSimpleName() + " " + e.getMessage());
                         }
                     }
                 });
-
-            String cls = "com.miui.home.launcher.hotseats.HotSeatsListContentBlurBackground2";
-            XposedHelpers.findAndHookMethod(cls, lpparam.classLoader, "setBackgroundWidth", int.class, mkHook());
-            XposedHelpers.findAndHookMethod(cls, lpparam.classLoader, "setBackgroundHeight", int.class, mkHook());
-            XposedHelpers.findAndHookMethod(cls, lpparam.classLoader, "setBackgroundRadius", float.class, mkHook());
         } catch (Throwable e) {
             XposedBridge.log("[DC] init err: " + e.getClass().getSimpleName() + " " + e.getMessage());
         }
@@ -157,7 +221,7 @@ public class MainHook implements IXposedHookLoadPackage {
 
     private static float clamp(float v, float lo, float hi) { return Math.max(lo, Math.min(hi, v)); }
 
-    private static XC_MethodHook mkHook() {
+    private static XC_MethodHook mkRadiusHook() {
         return new XC_MethodHook() {
             @Override protected void afterHookedMethod(MethodHookParam p) { syncAll((View) p.thisObject); }
         };
