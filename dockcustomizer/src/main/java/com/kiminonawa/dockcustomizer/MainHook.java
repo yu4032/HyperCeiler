@@ -34,6 +34,7 @@ public class MainHook implements IXposedHookLoadPackage {
     private static int blurRadius = 100;
     private static int heightOffset, widthOffset, cornerOffset = -1;
     private static boolean useSquircle;
+    private static boolean debugColors;
 
     private static int readInt(String path, int def) {
         try {
@@ -70,6 +71,7 @@ public class MainHook implements IXposedHookLoadPackage {
         widthOffset = readInt("/sdcard/dock_width_offset.txt", 0);
         cornerOffset = readInt("/sdcard/dock_corner_offset.txt", -1);
         useSquircle = "1".equals(readStr("/sdcard/dock_squircle.txt", "0"));
+        debugColors = "1".equals(readStr("/sdcard/dock_debug.txt", "0"));
         XposedBridge.log("[DC] mode=" + lightMode + " blur=" + blurRadius + " ho=" + heightOffset + " wo=" + widthOffset);
 
         try {
@@ -128,7 +130,7 @@ public class MainHook implements IXposedHookLoadPackage {
                     }
                 });
 
-            // Hook MiShadowUtils.applyViewShadow to clip shadow to rounded corners
+            // Hook MiShadowUtils.applyViewShadow to clip shadow and debug
             try {
                 Class<?> ms = XposedHelpers.findClass(
                     "com.miui.home.launcher.common.MiShadowUtils", lpparam.classLoader);
@@ -139,6 +141,14 @@ public class MainHook implements IXposedHookLoadPackage {
                             View v = (View) p.args[0];
                             if (v == null) return;
                             v.setClipToOutline(true);
+                            if (debugColors) {
+                                try {
+                                    // Blue tint on shadow view for identification
+                                    v.setBackgroundColor(Color.argb(50, 0, 0, 255));
+                                    XposedBridge.log("[DC] shadow view: " + v.getClass().getSimpleName()
+                                        + " size=" + v.getWidth() + "x" + v.getHeight());
+                                } catch (Throwable ignored) {}
+                            }
                         }
                     });
             } catch (Throwable ignored) {}
@@ -216,11 +226,19 @@ public class MainHook implements IXposedHookLoadPackage {
                                         Paint s = new Paint(Paint.ANTI_ALIAS_FLAG);
                                         s.setStyle(Paint.Style.STROKE);
                                         s.setStrokeWidth(6f);
-                                        s.setColor(Color.argb(200, 255, 255, 255));
+                                        s.setColor(debugColors ? Color.RED : Color.argb(200, 255, 255, 255));
                                         if (useSquircle)
                                             canvas.drawPath(squirclePath(new RectF(1,1,w-1,h-1), r), s);
                                         else
                                             canvas.drawRoundRect(1, 1, w-1, h-1, r, r, s);
+
+                                        if (debugColors) {
+                                            // Also draw a green rect at the bounds (overlay area)
+                                            Paint dbg = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                            dbg.setStyle(Paint.Style.FILL);
+                                            dbg.setColor(Color.argb(40, 0, 255, 0));
+                                            canvas.drawRect(0, 0, w, h, dbg);
+                                        }
                                         return;
                                     }
 
@@ -257,6 +275,21 @@ public class MainHook implements IXposedHookLoadPackage {
                                 ((FrameLayout.LayoutParams) oldBg.getLayoutParams()).gravity);
                             parent.addView(overlay, lp);
                             syncAll(oldBg);
+
+                            // Debug: outline views
+                            if (debugColors) {
+                                try {
+                                    // Red outline on oldBg
+                                    oldBg.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                                        @Override public void getOutline(View v, Outline o) {
+                                            o.setRect(0, 0, v.getWidth(), v.getHeight());
+                                        }
+                                    });
+                                    oldBg.setClipToOutline(false);
+                                    // Draw a red stroke via overlay
+                                    XposedBridge.log("[DC] debug: bg=" + oldBg.getClass().getSimpleName());
+                                } catch (Throwable ignored) {}
+                            }
 
                             if ("dynamic".equals(lightMode)) {
                                 try {
