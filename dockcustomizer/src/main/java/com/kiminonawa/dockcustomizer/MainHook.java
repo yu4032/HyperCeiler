@@ -256,7 +256,7 @@ public class MainHook implements IXposedHookLoadPackage {
     private static Path squirclePath(RectF rect, float radius) {
         Path p = new Path();
         if (radius <= 1) { p.addRect(rect, Path.Direction.CW); return p; }
-        float r = radius, c = r * 0.5522847498f;
+        float r = radius, c = r * 0.60f; // closer to Apple iPad dock (n≈5)
         float l = rect.left, t = rect.top, ri = rect.right, b = rect.bottom;
         p.moveTo(l, t + r);
         p.cubicTo(l, t+r-c, l+r-c, t, l+r, t);
