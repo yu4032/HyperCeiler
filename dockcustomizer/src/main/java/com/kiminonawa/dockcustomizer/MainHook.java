@@ -2,11 +2,8 @@ package com.kiminonawa.dockcustomizer;
 
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Outline;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.graphics.RadialGradient;
-import android.graphics.RectF;
 import android.graphics.Shader;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -33,8 +30,6 @@ public class MainHook implements IXposedHookLoadPackage {
     private static String lightMode = "fixed";
     private static int blurRadius = 100;
     private static int heightOffset, widthOffset, cornerOffset = -1;
-    private static boolean useSquircle;
-    private static boolean debugColors;
 
     private static int readInt(String path, int def) {
         try {
@@ -70,8 +65,6 @@ public class MainHook implements IXposedHookLoadPackage {
         heightOffset = readInt("/sdcard/dock_height_offset.txt", 0);
         widthOffset = readInt("/sdcard/dock_width_offset.txt", 0);
         cornerOffset = readInt("/sdcard/dock_corner_offset.txt", -1);
-        useSquircle = "1".equals(readStr("/sdcard/dock_squircle.txt", "0"));
-        debugColors = "1".equals(readStr("/sdcard/dock_debug.txt", "0"));
         XposedBridge.log("[DC] mode=" + lightMode + " blur=" + blurRadius + " ho=" + heightOffset + " wo=" + widthOffset);
 
         try {
@@ -99,7 +92,6 @@ public class MainHook implements IXposedHookLoadPackage {
                     @Override protected void afterHookedMethod(MethodHookParam p) { syncAll((View) p.thisObject); }
                 });
 
-            // Hook setBackgroundRadius to also pass squircle flag
             XposedHelpers.findAndHookMethod(
                 "com.miui.home.launcher.hotseats.HotSeatsListContentBlurBackground2",
                 lpparam.classLoader, "setBackgroundRadius", float.class, new XC_MethodHook() {
@@ -108,76 +100,17 @@ public class MainHook implements IXposedHookLoadPackage {
                             p.args[0] = ((Float) p.args[0]) + cornerOffset;
                         }
                     }
-                    @Override protected void afterHookedMethod(MethodHookParam p) {
-                        if (useSquircle) {
-                            // The blur layer must also be rounded with squircle
-                            // Hook BlurUtilities.setBackgroundBlur to substitute squircle outline
-                            try {
-                                View v = (View) p.thisObject;
-                                float radius = (Float) XposedHelpers.getObjectField(v, "mCornerRadius");
-                                if (radius > 0) {
-                                    Path sp = squirclePath(
-                                        new RectF(0, 0, v.getWidth(), v.getHeight()), radius);
-                                    v.setOutlineProvider(new android.view.ViewOutlineProvider() {
-                                        @Override public void getOutline(View vv, Outline o) {
-                                            o.setPath(sp);
-                                        }
-                                    });
-                                }
-                            } catch (Throwable ignored) {}
-                        }
-                        syncAll((View) p.thisObject);
-                    }
+                    @Override protected void afterHookedMethod(MethodHookParam p) { syncAll((View) p.thisObject); }
                 });
 
-            // Hook MiShadowUtils.applyViewShadow to clip shadow and debug
-            try {
-                Class<?> ms = XposedHelpers.findClass(
-                    "com.miui.home.launcher.common.MiShadowUtils", lpparam.classLoader);
-                XposedHelpers.findAndHookMethod(ms, "applyViewShadow",
-                    View.class, int.class, float.class, float.class, float.class, float.class,
-                    new XC_MethodHook() {
-                        @Override protected void afterHookedMethod(MethodHookParam p) {
-                            View v = (View) p.args[0];
-                            if (v == null) return;
-                            v.setClipToOutline(true);
-                            if (debugColors) {
-                                try {
-                                    // Blue tint on shadow view for identification
-                                    v.setBackgroundColor(Color.argb(50, 0, 0, 255));
-                                    XposedBridge.log("[DC] shadow view: " + v.getClass().getSimpleName()
-                                        + " size=" + v.getWidth() + "x" + v.getHeight());
-                                } catch (Throwable ignored) {}
-                            }
-                        }
-                    });
-            } catch (Throwable ignored) {}
-
-            // Hook updateRoundRect to always apply outline (bypass MiShadow check)
+            // Hook addBlur to customize blur radius
             XposedHelpers.findAndHookMethod(
                 "com.miui.home.launcher.hotseats.HotSeatsListContentBlurBackground2",
-                lpparam.classLoader, "updateRoundRect", int.class, int.class, float.class,
-                new XC_MethodHook() {
-                    @Override protected void afterHookedMethod(MethodHookParam p) {
-                        View v = (View) p.thisObject;
-                        final int w = (Integer) p.args[0];
-                        final int h = (Integer) p.args[1];
-                        final float r = (Float) p.args[2];
-                        v.setClipToOutline(true);
-                        if (useSquircle) {
-                            Path sp = squirclePath(new RectF(0, 0, w, h), r);
-                            v.setOutlineProvider(new android.view.ViewOutlineProvider() {
-                                @Override public void getOutline(View vv, Outline o) {
-                                    o.setPath(sp);
-                                }
-                            });
-                        } else {
-                            v.setOutlineProvider(new android.view.ViewOutlineProvider() {
-                                @Override public void getOutline(View vv, Outline o) {
-                                    o.setRoundRect(0, 0, w, h, r);
-                                }
-                            });
-                        }
+                lpparam.classLoader, "addBlur", View.class, float.class, new XC_MethodHook() {
+                    @Override protected void beforeHookedMethod(MethodHookParam p) throws Throwable {
+                        // Override blur radius: the method calls
+                        // BlurUtilities.setBackgroundBlur(view, DeviceConfig.scaleMingouDockWidgetBigFolderBlurRadius(100), ...)
+                        // We hook the BlurUtilities.setBackgroundBlur instead
                     }
                 });
 
@@ -218,27 +151,15 @@ public class MainHook implements IXposedHookLoadPackage {
                                 @Override
                                 protected void onDraw(Canvas canvas) {
                                     if (bgW < 1 || bgH < 1) return;
-                                    float w = bgW, h = bgH;
-                                    float r = Math.max(0, useSquircle ? bgR : bgR - 1f);
+                                    float w = bgW, h = bgH, r = Math.max(0, bgR - 1f);
                                     float maxDim = Math.max(w, h);
 
                                     if ("none".equals(lightMode)) {
                                         Paint s = new Paint(Paint.ANTI_ALIAS_FLAG);
                                         s.setStyle(Paint.Style.STROKE);
                                         s.setStrokeWidth(6f);
-                                        s.setColor(debugColors ? Color.RED : Color.argb(200, 255, 255, 255));
-                                        if (useSquircle)
-                                            canvas.drawPath(squirclePath(new RectF(1,1,w-1,h-1), r), s);
-                                        else
-                                            canvas.drawRoundRect(1, 1, w-1, h-1, r, r, s);
-
-                                        if (debugColors) {
-                                            // Also draw a green rect at the bounds (overlay area)
-                                            Paint dbg = new Paint(Paint.ANTI_ALIAS_FLAG);
-                                            dbg.setStyle(Paint.Style.FILL);
-                                            dbg.setColor(Color.argb(40, 0, 255, 0));
-                                            canvas.drawRect(0, 0, w, h, dbg);
-                                        }
+                                        s.setColor(Color.argb(200, 255, 255, 255));
+                                        canvas.drawRoundRect(1, 1, w-1, h-1, r, r, s);
                                         return;
                                     }
 
@@ -250,6 +171,8 @@ public class MainHook implements IXposedHookLoadPackage {
                                     base.setStyle(Paint.Style.STROKE);
                                     base.setStrokeWidth(6f);
                                     base.setColor(Color.argb(120, 255, 255, 255));
+                                    canvas.drawRoundRect(1, 1, w-1, h-1, r, r, base);
+
                                     Paint s1p = new Paint(Paint.ANTI_ALIAS_FLAG);
                                     s1p.setStyle(Paint.Style.STROKE);
                                     s1p.setStrokeWidth(6f);
@@ -258,15 +181,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                                   Color.argb(120, 255, 255, 255),
                                                   Color.argb(0, 255, 255, 255)},
                                         new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
-
-                                    if (useSquircle) {
-                                        Path sp = squirclePath(new RectF(1, 1, w-1, h-1), r);
-                                        canvas.drawPath(sp, base);
-                                        canvas.drawPath(sp, s1p);
-                                    } else {
-                                        canvas.drawRoundRect(1, 1, w-1, h-1, r, r, base);
-                                        canvas.drawRoundRect(1, 1, w-1, h-1, r, r, s1p);
-                                    }
+                                    canvas.drawRoundRect(1, 1, w-1, h-1, r, r, s1p);
                                 }
                             };
                             overlay.setId(View.generateViewId());
@@ -275,21 +190,6 @@ public class MainHook implements IXposedHookLoadPackage {
                                 ((FrameLayout.LayoutParams) oldBg.getLayoutParams()).gravity);
                             parent.addView(overlay, lp);
                             syncAll(oldBg);
-
-                            // Debug: outline views
-                            if (debugColors) {
-                                try {
-                                    // Red outline on oldBg
-                                    oldBg.setOutlineProvider(new android.view.ViewOutlineProvider() {
-                                        @Override public void getOutline(View v, Outline o) {
-                                            o.setRect(0, 0, v.getWidth(), v.getHeight());
-                                        }
-                                    });
-                                    oldBg.setClipToOutline(false);
-                                    // Draw a red stroke via overlay
-                                    XposedBridge.log("[DC] debug: bg=" + oldBg.getClass().getSimpleName());
-                                } catch (Throwable ignored) {}
-                            }
 
                             if ("dynamic".equals(lightMode)) {
                                 try {
@@ -327,23 +227,6 @@ public class MainHook implements IXposedHookLoadPackage {
     }
 
     private static float clamp(float v, float lo, float hi) { return Math.max(lo, Math.min(hi, v)); }
-
-    private static Path squirclePath(RectF rect, float radius) {
-        Path p = new Path();
-        if (radius <= 1) { p.addRect(rect, Path.Direction.CW); return p; }
-        float r = radius, c = r * 0.60f; // closer to Apple iPad dock (n≈5)
-        float l = rect.left, t = rect.top, ri = rect.right, b = rect.bottom;
-        p.moveTo(l, t + r);
-        p.cubicTo(l, t+r-c, l+r-c, t, l+r, t);
-        p.lineTo(ri-r, t);
-        p.cubicTo(ri-r+c, t, ri, t+r-c, ri, t+r);
-        p.lineTo(ri, b-r);
-        p.cubicTo(ri, b-r+c, ri-r+c, b, ri-r, b);
-        p.lineTo(l+r, b);
-        p.cubicTo(l+r-c, b, l, b-r+c, l, b-r);
-        p.close();
-        return p;
-    }
 
     private static void syncAll(View oldBg) {
         if (overlay == null || oldBg == null) return;

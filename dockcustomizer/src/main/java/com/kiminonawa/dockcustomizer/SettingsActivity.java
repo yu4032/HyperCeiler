@@ -19,7 +19,6 @@ public class SettingsActivity extends Activity {
     private int mode = 1;
     private EditText blurRadiusInput, heightOffsetInput, widthOffsetInput, cornerInput;
     private int blurRadius = 100, heightOffset, widthOffset, cornerOffset = -1;
-    private CheckBox squircleCheck;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,7 +33,6 @@ public class SettingsActivity extends Activity {
         heightOffset = sp.getInt("height_offset", 0);
         widthOffset = sp.getInt("width_offset", 0);
         cornerOffset = sp.getInt("corner_offset", -1);
-        boolean squircle = sp.getBoolean("squircle", false);
 
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
@@ -81,11 +79,6 @@ public class SettingsActivity extends Activity {
         cornerInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
         layout.addView(cornerInput);
 
-        squircleCheck = new CheckBox(this);
-        squircleCheck.setText("Squircle Corners (iOS-style continuous curve)");
-        squircleCheck.setChecked(squircle);
-        layout.addView(squircleCheck);
-
         Button apply = new Button(this);
         apply.setText("Apply & Restart Launcher");
         apply.setOnClickListener(v -> saveAndRestart());
@@ -107,13 +100,11 @@ public class SettingsActivity extends Activity {
             int ho = Integer.parseInt(heightOffsetInput.getText().toString().trim());
             int wo = Integer.parseInt(widthOffsetInput.getText().toString().trim());
             int co = Integer.parseInt(cornerInput.getText().toString().trim());
-            boolean sq = squircleCheck.isChecked();
 
             SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
             sp.edit().putString("light_mode", val)
                 .putInt("blur_radius", br).putInt("height_offset", ho)
-                .putInt("width_offset", wo).putInt("corner_offset", co)
-                .putBoolean("squircle", sq).commit();
+                .putInt("width_offset", wo).putInt("corner_offset", co).commit();
 
             Process p = Runtime.getRuntime().exec("su");
             DataOutputStream os = new DataOutputStream(p.getOutputStream());
@@ -122,7 +113,6 @@ public class SettingsActivity extends Activity {
             os.writeBytes("echo '" + ho + "' > /sdcard/dock_height_offset.txt\n");
             os.writeBytes("echo '" + wo + "' > /sdcard/dock_width_offset.txt\n");
             os.writeBytes("echo '" + co + "' > /sdcard/dock_corner_offset.txt\n");
-            os.writeBytes("echo '" + (sq ? "1" : "0") + "' > /sdcard/dock_squircle.txt\n");
             os.writeBytes("am force-stop com.miui.home\nsleep 1\n");
             os.writeBytes("am start -n com.miui.home/.launcher.Launcher\nexit\n");
             os.flush(); p.waitFor();
