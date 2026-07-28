@@ -3,6 +3,7 @@ package com.kiminonawa.betterdock;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RadialGradient;
@@ -29,7 +30,7 @@ public class MainHook implements IXposedHookLoadPackage {
     private static View overlay, glassOverlay, oldBg;
     private static int bgW, bgH;
     private static float bgR = 30f;
-    private static float gyroX, gyroY;
+    private static float gyroX, gyroY, smoothGx, smoothGy;
     private static long gyroTime;
     private static String lightMode = "fixed";
     private static int blurRadius = 100;
@@ -215,13 +216,39 @@ public class MainHook implements IXposedHookLoadPackage {
                                         fill.setColor(Color.argb(0,255,255,255)); canvas.drawPath(inner,fill);
 
                                         boolean dyn = "dynamic".equals(lightMode);
-                                        float s1x = dyn ? w*(0.5f+gyroY*0.3f) : w*0.5f;
-                                        float s1y = dyn ? h*(0.5f+gyroX*0.3f) : h*0.5f;
-                                        Paint s1p = new Paint(Paint.ANTI_ALIAS_FLAG); s1p.setStyle(Paint.Style.FILL);
-                                        s1p.setShader(new RadialGradient(s1x,s1y,maxDim*0.4f,
-                                            new int[]{Color.argb(255,255,255,255),Color.argb(120,255,255,255),Color.argb(0,255,255,255)},
-                                            new float[]{0f,0.5f,1f}, Shader.TileMode.CLAMP));
-                                        canvas.drawPath(outer,s1p);
+                                        if (dyn) {
+                                            // Momentum: smooth follow instead of instant jump
+                                            float lerp = 0.08f;
+                                            smoothGx += (gyroY - smoothGx) * lerp;
+                                            smoothGy += (gyroX - smoothGy) * lerp;
+                                        }
+                                        float lx = dyn ? smoothGx : 0f;
+                                        float ly = dyn ? smoothGy : 0f;
+                                        float sx1 = w*(0.5f + lx*0.35f);
+                                        float sy1 = h*(0.5f + ly*0.35f);
+                                        float sx2 = w*(0.35f - lx*0.25f);
+                                        float sy2 = h*(0.35f - ly*0.25f);
+
+                                        // Ambient fill
+                                        Paint ambient = new Paint(Paint.ANTI_ALIAS_FLAG); ambient.setStyle(Paint.Style.FILL);
+                                        ambient.setShader(new LinearGradient(0, 0, 0, h,
+                                            new int[]{Color.argb(60, 255,255,255), Color.argb(30,255,255,255), Color.argb(40,255,255,255)},
+                                            new float[]{0.2f, 0.5f, 0.85f}, Shader.TileMode.CLAMP));
+
+                                        // Specular hotspot
+                                        Paint spec = new Paint(Paint.ANTI_ALIAS_FLAG); spec.setStyle(Paint.Style.FILL);
+                                        spec.setShader(new RadialGradient(sx1, sy1, maxDim*0.5f,
+                                            new int[]{Color.argb(200,255,255,255), Color.argb(80,255,255,255), Color.argb(0,255,255,255)},
+                                            new float[]{0f, 0.35f, 1f}, Shader.TileMode.CLAMP));
+
+                                        // Rim light on opposite edge
+                                        Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG); rim.setStyle(Paint.Style.FILL);
+                                        rim.setShader(new RadialGradient(sx2, sy2, maxDim*0.3f,
+                                            new int[]{Color.argb(80,255,255,255), Color.argb(0,255,255,255)},
+                                            new float[]{0f, 1f}, Shader.TileMode.CLAMP));
+                                        canvas.drawPath(outer, ambient);
+                                        canvas.drawPath(outer, spec);
+                                        canvas.drawPath(outer, rim);
                                         fill.setColor(Color.argb(0,255,255,255)); canvas.drawPath(inner,fill); return;
                                     }
 
@@ -244,29 +271,16 @@ public class MainHook implements IXposedHookLoadPackage {
                                     float s1y = dyn ? h*(0.5f+gyroX*0.3f) : h*0.5f;
 
                                     if (!useSquircle && fillDiff) {
-                                        Paint base = new Paint(Paint.ANTI_ALIAS_FLAG); base.setStyle(Paint.Style.FILL);
-                                        base.setColor(Color.argb(120,255,255,255));
-                                        canvas.drawRoundRect(0,0,w,h, r,r, base);
-                                        base.setColor(Color.argb(0,255,255,255)); base.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
-                                        canvas.drawRoundRect(strokeW,strokeW,w-strokeW,h-strokeW, r-strokeW,r-strokeW, base);
-
-                                        Paint s1p = new Paint(Paint.ANTI_ALIAS_FLAG); s1p.setStyle(Paint.Style.FILL);
-                                        s1p.setShader(new RadialGradient(s1x,s1y,maxDim*0.4f,
-                                            new int[]{Color.argb(255,255,255,255),Color.argb(120,255,255,255),Color.argb(0,255,255,255)},
-                                            new float[]{0f,0.5f,1f}, Shader.TileMode.CLAMP));
-                                        canvas.drawRoundRect(0,0,w,h, r,r, s1p);
-                                        s1p.setColor(Color.argb(0,255,255,255)); s1p.setShader(null); s1p.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
-                                        canvas.drawRoundRect(strokeW,strokeW,w-strokeW,h-strokeW, r-strokeW,r-strokeW, s1p);
+                                        canvas.drawRoundRect(0,0,w,h, r,r, ambient);
+                                        canvas.drawRoundRect(0,0,w,h, r,r, spec);
+                                        canvas.drawRoundRect(0,0,w,h, r,r, rim);
+                                        Paint clear = new Paint(Paint.ANTI_ALIAS_FLAG); clear.setStyle(Paint.Style.FILL);
+                                        clear.setColor(Color.argb(0,255,255,255)); clear.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
+                                        canvas.drawRoundRect(strokeW,strokeW,w-strokeW,h-strokeW, r-strokeW,r-strokeW, clear);
                                     } else {
-                                        Paint base = new Paint(Paint.ANTI_ALIAS_FLAG); base.setStyle(Paint.Style.STROKE);
-                                        base.setStrokeWidth((float)stdStrokeW); base.setColor(Color.argb(120,255,255,255));
-                                        Paint s1p = new Paint(Paint.ANTI_ALIAS_FLAG); s1p.setStyle(Paint.Style.STROKE);
-                                        s1p.setStrokeWidth((float)stdStrokeW);
-                                        s1p.setShader(new RadialGradient(s1x,s1y,maxDim*0.4f,
-                                            new int[]{Color.argb(255,255,255,255),Color.argb(120,255,255,255),Color.argb(0,255,255,255)},
-                                            new float[]{0f,0.5f,1f}, Shader.TileMode.CLAMP));
-                                        canvas.drawRoundRect(1,1,w-1,h-1,r,r,base);
-                                        canvas.drawRoundRect(1,1,w-1,h-1,r,r,s1p);
+                                        canvas.drawRoundRect(1,1,w-1,h-1,r,r,ambient);
+                                        canvas.drawRoundRect(1,1,w-1,h-1,r,r,spec);
+                                        canvas.drawRoundRect(1,1,w-1,h-1,r,r,rim);
                                     }
                                 }
                             };
