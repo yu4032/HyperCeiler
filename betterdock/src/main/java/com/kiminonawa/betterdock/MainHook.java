@@ -156,14 +156,13 @@ public class MainHook implements IXposedHookLoadPackage {
                             // --- Delegate to HyperLight liquid glass ---
                             try {
                                 float density = oldBg.getResources().getDisplayMetrics().density;
-                                Class<?> ce0 = Class.forName("defpackage.ce0");
+                                Class<?> ce0 = XposedHelpers.findClass("defpackage.ce0", lpparam.classLoader);
                                 ce0.getMethod("c", View.class, Float.TYPE, String.class, Integer.TYPE)
                                     .invoke(null, oldBg, density * 30f, "desktop", 0);
                                 XposedBridge.log("[DC] delegated to HyperLight liquid glass");
-                                return; // HyperLight handles everything, skip our own rendering
+                                return;
                             } catch (Throwable e) {
                                 XposedBridge.log("[DC] HyperLight delegation failed: " + e.getClass().getSimpleName());
-                                // Fall through to our own rendering
                             }
 
                             // Our own rendering below...
