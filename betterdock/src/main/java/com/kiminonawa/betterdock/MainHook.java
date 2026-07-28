@@ -185,7 +185,7 @@ public class MainHook implements IXposedHookLoadPackage {
                                     // Squircle stroke: fill outer - fill inner = perfect edge
                                     // Squircle stroke: fill outer - fill inner = perfect edge
                                     if (useSquircle) {
-                                        float strokeW = 6f;
+                                        float strokeW = 4f;
                                         float off = SQUIRCLE_STROKE_OFF;
                                         // Outer: smaller control point for rounder corners at larger radius
                                         Path outer = squirclePath(new RectF(-off, -off, w+off, h+off), r, 0.58f);
@@ -227,7 +227,7 @@ public class MainHook implements IXposedHookLoadPackage {
 
                                     if ("none".equals(lightMode)) {
                                         Paint s = new Paint(Paint.ANTI_ALIAS_FLAG);
-                                        s.setStyle(Paint.Style.STROKE); s.setStrokeWidth(6f);
+                                        s.setStyle(Paint.Style.STROKE); s.setStrokeWidth(4f);
                                         s.setColor(Color.argb(200, 255, 255, 255));
                                         canvas.drawRoundRect(1, 1, w-1, h-1, r, r, s);
                                         return;
@@ -238,10 +238,10 @@ public class MainHook implements IXposedHookLoadPackage {
                                     float s1y = dyn ? h*(0.5f+gyroX*0.3f) : h*0.5f;
 
                                     Paint base = new Paint(Paint.ANTI_ALIAS_FLAG);
-                                    base.setStyle(Paint.Style.STROKE); base.setStrokeWidth(6f);
+                                    base.setStyle(Paint.Style.STROKE); base.setStrokeWidth(4f);
                                     base.setColor(Color.argb(120, 255, 255, 255));
                                     Paint s1p = new Paint(Paint.ANTI_ALIAS_FLAG);
-                                    s1p.setStyle(Paint.Style.STROKE); s1p.setStrokeWidth(6f);
+                                    s1p.setStyle(Paint.Style.STROKE); s1p.setStrokeWidth(4f);
                                     s1p.setShader(new RadialGradient(s1x, s1y, maxDim*0.4f,
                                         new int[]{Color.argb(255,255,255,255),Color.argb(120,255,255,255),Color.argb(0,255,255,255)},
                                         new float[]{0f,0.5f,1f}, Shader.TileMode.CLAMP));
