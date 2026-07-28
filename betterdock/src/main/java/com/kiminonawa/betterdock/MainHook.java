@@ -3,6 +3,7 @@ package com.kiminonawa.betterdock;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RadialGradient;
@@ -150,26 +151,61 @@ public class MainHook implements IXposedHookLoadPackage {
                             // Liquid Glass overlay (behind bloom, above blur bg)
                             if (liquidGlass && glassOverlay == null) {
                                 glassOverlay = new View(oldBg.getContext()) {
+                                    private Bitmap capBmp;
+                                    private long lastCap;
                                     @Override protected void onDraw(Canvas canvas) {
-                                        // GPU blur handles rendering — just draw tint
                                         if (bgW < 1 || bgH < 1) return;
                                         float w = bgW, h = bgH, r = Math.max(0, bgR);
                                         int a = Color.alpha(lgTint) * lgAlpha / 255;
+
+                                        // Screen capture: draw what's behind us at reduced scale
+                                        long now = System.currentTimeMillis();
+                                        if (now - lastCap > 200) { // 5fps capture
+                                            try {
+                                                int sw = Math.max(1, (int)(w / 8)); // 12.5% scale
+                                                int sh = Math.max(1, (int)(h / 8));
+                                                if (capBmp == null || capBmp.getWidth() != sw || capBmp.getHeight() != sh) {
+                                                    if (capBmp != null) capBmp.recycle();
+                                                    capBmp = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888);
+                                                }
+                                                Canvas cc = new Canvas(capBmp);
+                                                cc.scale(1f/8f, 1f/8f);
+                                                int[] loc = new int[2];
+                                                oldBg.getLocationOnScreen(loc);
+                                                View root = oldBg.getRootView();
+                                                cc.translate(-loc[0], -loc[1]);
+                                                root.draw(cc);
+                                                lastCap = now;
+                                            } catch (Throwable ignored) {}
+                                        }
+
+                                        // Draw captured + scaled up background (bilinear = blur)
+                                        if (capBmp != null && !capBmp.isRecycled()) {
+                                            Paint bp = new Paint(Paint.FILTER_BITMAP_FLAG);
+                                            bp.setAlpha(lgAlpha);
+                                            if (useSquircle) {
+                                                canvas.save();
+                                                canvas.clipPath(squirclePath(new RectF(0,0,w,h), r));
+                                                canvas.drawBitmap(capBmp, null, new RectF(0,0,w,h), bp);
+                                                canvas.restore();
+                                            } else {
+                                                canvas.save();
+                                                canvas.clipRect(0,0,w,h);
+                                                canvas.drawBitmap(capBmp, null, new RectF(0,0,w,h), bp);
+                                                canvas.restore();
+                                            }
+                                        }
+
+                                        // Tint overlay
                                         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
                                         p.setColor(Color.argb(a, Color.red(lgTint), Color.green(lgTint), Color.blue(lgTint)));
                                         if (useSquircle) canvas.drawPath(squirclePath(new RectF(0,0,w,h), r), p);
                                         else canvas.drawRoundRect(0,0,w,h, r,r, p);
                                     }
                                 };
-                                // GPU anisotropic blur (HyperLight-style chromium look)
-                                int blurH = blurRadius / 6;
-                                int blurV = blurRadius / 4;
-                                glassOverlay.setRenderEffect(
-                                    RenderEffect.createBlurEffect(blurH, blurV, Shader.TileMode.CLAMP));
                                 glassOverlay.setId(View.generateViewId());
                                 parent.addView(glassOverlay, parent.indexOfChild(oldBg)+1,
                                     new FrameLayout.LayoutParams(-1, -1, gravity));
-                                XposedBridge.log("[DC] GPU blur: " + blurH + "x" + blurV);
                             }
 
                             // Bloom overlay
