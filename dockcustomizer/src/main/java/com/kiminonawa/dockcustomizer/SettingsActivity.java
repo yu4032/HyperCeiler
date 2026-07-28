@@ -88,13 +88,6 @@ public class SettingsActivity extends Activity {
         sq.setChecked(sp.getBoolean("squircle", false));
         layout.addView(sq);
 
-        layout.addView(label("Squircle Stroke Offset (px)"));
-        EditText sqOff = new EditText(this);
-        sqOff.setText(String.valueOf(sp.getInt("sq_stroke_off", 3)));
-        sqOff.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_SIGNED);
-        layout.addView(sqOff);
-
-        // Preset buttons
         LinearLayout presetRow = new LinearLayout(this);
         presetRow.setOrientation(LinearLayout.HORIZONTAL);
 
@@ -107,9 +100,6 @@ public class SettingsActivity extends Activity {
             widthOffsetInput.setText("0");
             cornerInput.setText("-1");
             sq.setChecked(false);
-            sqOff.setText("3");
-            // reset radio
-            ((RadioButton) ((RadioGroup) ((LinearLayout) miBtn.getParent().getParent()).getChildAt(1)).getChildAt(1)).setChecked(true);
         });
         presetRow.addView(miBtn);
 
@@ -122,8 +112,6 @@ public class SettingsActivity extends Activity {
             widthOffsetInput.setText("1");
             cornerInput.setText("0");
             sq.setChecked(true);
-            sqOff.setText("5");
-            ((RadioButton) ((RadioGroup) ((LinearLayout) ipadBtn.getParent().getParent()).getChildAt(1)).getChildAt(1)).setChecked(true);
         });
         presetRow.addView(ipadBtn);
         layout.addView(presetRow);
@@ -137,13 +125,12 @@ public class SettingsActivity extends Activity {
                 int ho = Integer.parseInt(heightOffsetInput.getText().toString().trim());
                 int wo = Integer.parseInt(widthOffsetInput.getText().toString().trim());
                 int co = Integer.parseInt(cornerInput.getText().toString().trim());
-                int sso = Integer.parseInt(sqOff.getText().toString().trim());
                 boolean squircle = sq.isChecked();
 
                 sp.edit().putString("light_mode", val)
                     .putInt("blur_radius", br).putInt("height_offset", ho)
                     .putInt("width_offset", wo).putInt("corner_offset", co)
-                    .putBoolean("squircle", squircle).putInt("sq_stroke_off", sso).commit();
+                    .putBoolean("squircle", squircle).commit();
 
                 Process p = Runtime.getRuntime().exec("su");
                 DataOutputStream os = new DataOutputStream(p.getOutputStream());
@@ -152,7 +139,6 @@ public class SettingsActivity extends Activity {
                 os.writeBytes("echo '" + ho + "' > /sdcard/dock_height_offset.txt\n");
                 os.writeBytes("echo '" + wo + "' > /sdcard/dock_width_offset.txt\n");
                 os.writeBytes("echo '" + co + "' > /sdcard/dock_corner_offset.txt\n");
-                os.writeBytes("echo '" + sso + "' > /sdcard/dock_sq_stroke_off.txt\n");
                 os.writeBytes("echo '" + (squircle ? "1" : "0") + "' > /sdcard/dock_squircle.txt\n");
                 os.writeBytes("am force-stop com.miui.home\nsleep 1\n");
                 os.writeBytes("am start -n com.miui.home/.launcher.Launcher\nexit\n");
