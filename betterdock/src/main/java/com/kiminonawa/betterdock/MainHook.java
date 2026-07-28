@@ -157,7 +157,7 @@ public class MainHook implements IXposedHookLoadPackage {
 
                                     private Bitmap captureDisplay(View v) {
                                         try {
-                                            // Match HyperLight's exact approach
+                                            Class<?> iwm = Class.forName("android.view.IWindowManager");
                                             Class<?> wmg = Class.forName("android.view.WindowManagerGlobal");
                                             Object wms = wmg.getMethod("getWindowManagerService").invoke(null);
                                             
@@ -171,24 +171,8 @@ public class MainHook implements IXposedHookLoadPackage {
                                             float scale = 0.25f;
                                             builderCls.getMethod("setFrameScale", Float.TYPE, Float.TYPE).invoke(builder, scale, scale);
                                             
-                                            // Try setCaptureMode if available
-                                            try {
-                                                builderCls.getMethod("setCaptureMode", Integer.TYPE).invoke(builder, 1); // CAPTURE_CHILDREN
-                                            } catch (Throwable ignored) {}
-                                            
-                                            int[] loc = new int[2];
-                                            v.getLocationOnScreen(loc);
-                                            try {
-                                                Class<?> rectCls = Class.forName("android.graphics.Rect");
-                                                Object rect = rectCls.getConstructor(Integer.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE)
-                                                    .newInstance(loc[0], loc[1], loc[0] + v.getWidth(), loc[1] + v.getHeight());
-                                                builderCls.getMethod("setSourceRect", rectCls).invoke(builder, rect);
-                                            } catch (Throwable ignored) {}
-
                                             Object args = builderCls.getMethod("build").invoke(builder);
                                             
-                                            // Use IWindowManager interface, not wms.getClass()
-                                            Class<?> iwm = Class.forName("android.view.IWindowManager");
                                             java.lang.reflect.Method captureMethod = iwm.getMethod("captureDisplay", 
                                                 Integer.TYPE, argsCls, listenerCls);
                                             
@@ -199,13 +183,25 @@ public class MainHook implements IXposedHookLoadPackage {
                                             
                                             Object hwBuf = syncCls.getMethod("getBuffer").invoke(syncListener);
                                             if (hwBuf != null) {
-                                                Bitmap bmp = (Bitmap) bufCls.getMethod("asBitmap").invoke(hwBuf);
-                                                if (bmp != null) {
-                                                    return Bitmap.createScaledBitmap(bmp, v.getWidth()/3, v.getHeight()/3, true);
+                                                Bitmap full = (Bitmap) bufCls.getMethod("asBitmap").invoke(hwBuf);
+                                                if (full != null) {
+                                                    // Crop to dock area
+                                                    int[] loc = new int[2];
+                                                    v.getLocationOnScreen(loc);
+                                                    int sx = Math.max(0, (int)(loc[0] * scale));
+                                                    int sy = Math.max(0, (int)(loc[1] * scale));
+                                                    int sw = Math.min(full.getWidth() - sx, (int)(v.getWidth() * scale));
+                                                    int sh = Math.min(full.getHeight() - sy, (int)(v.getHeight() * scale));
+                                                    if (sw > 0 && sh > 0) {
+                                                        Bitmap crop = Bitmap.createBitmap(full, sx, sy, sw, sh);
+                                                        if (!full.isRecycled()) full.recycle();
+                                                        return Bitmap.createScaledBitmap(crop, v.getWidth()/4, v.getHeight()/4, true);
+                                                    }
+                                                    if (!full.isRecycled()) full.recycle();
                                                 }
                                             }
                                         } catch (Throwable e) {
-                                            XposedBridge.log("[DC] capture failed: " + e.getClass().getSimpleName() + " " + e.getMessage());
+                                            XposedBridge.log("[DC] capture: " + e.getClass().getSimpleName());
                                         }
                                         return null;
                                     }
