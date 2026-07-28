@@ -278,8 +278,9 @@ public class MainHook implements IXposedHookLoadPackage {
                                                 long now = e.timestamp;
                                                 if (gyroTime > 0) { float dt = (now-gyroTime)/1e9f;
                                                     if (dt>0 && dt<0.1f) {
-                                                        gyroX=clamp(gyroX+e.values[0]*dt*2.4f,-1.35f,1.35f);
-                                                        gyroY=clamp(gyroY+e.values[1]*dt*2.4f,-1.35f,1.35f);
+                                                        // Landscape tablet: swap X/Y for correct axis mapping
+                                                        gyroX=clamp(gyroX+e.values[1]*dt*2.4f,-1.35f,1.35f);
+                                                        gyroY=clamp(gyroY+e.values[0]*dt*2.4f,-1.35f,1.35f);
                                                     }}
                                                 gyroTime=now;
                                                 if (overlay!=null) overlay.postInvalidate();
