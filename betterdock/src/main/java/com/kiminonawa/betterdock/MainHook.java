@@ -157,42 +157,55 @@ public class MainHook implements IXposedHookLoadPackage {
 
                                     private Bitmap captureDisplay(View v) {
                                         try {
+                                            // Match HyperLight's exact approach
                                             Class<?> wmg = Class.forName("android.view.WindowManagerGlobal");
                                             Object wms = wmg.getMethod("getWindowManagerService").invoke(null);
-                                            Class<?> sc = Class.forName("android.window.ScreenCapture");
-                                            Class<?> capArgs = Class.forName("android.window.ScreenCapture$CaptureArgs");
-                                            Class<?> build = Class.forName("android.window.ScreenCapture$CaptureArgs$Builder");
-                                            Class<?> sync = Class.forName("android.window.ScreenCapture$SynchronousScreenCaptureListener");
-                                            Class<?> buffer = Class.forName("android.window.ScreenCapture$ScreenshotHardwareBuffer");
-
-                                            Object builder = build.getConstructor().newInstance();
+                                            
+                                            Class<?> builderCls = Class.forName("android.window.ScreenCapture$CaptureArgs$Builder");
+                                            Class<?> argsCls = Class.forName("android.window.ScreenCapture$CaptureArgs");
+                                            Class<?> listenerCls = Class.forName("android.window.ScreenCapture$ScreenCaptureListener");
+                                            Class<?> syncCls = Class.forName("android.window.ScreenCapture$SynchronousScreenCaptureListener");
+                                            Class<?> bufCls = Class.forName("android.window.ScreenCapture$ScreenshotHardwareBuffer");
+                                            
+                                            Object builder = builderCls.getConstructor().newInstance();
                                             float scale = 0.25f;
-                                            build.getMethod("setFrameScale", Float.TYPE, Float.TYPE).invoke(builder, scale, scale);
+                                            builderCls.getMethod("setFrameScale", Float.TYPE, Float.TYPE).invoke(builder, scale, scale);
+                                            
+                                            // Try setCaptureMode if available
+                                            try {
+                                                builderCls.getMethod("setCaptureMode", Integer.TYPE).invoke(builder, 1); // CAPTURE_CHILDREN
+                                            } catch (Throwable ignored) {}
+                                            
                                             int[] loc = new int[2];
                                             v.getLocationOnScreen(loc);
-                                            // setSourceRect is API 34+, try with reflection
                                             try {
-                                                Class<?> rect = Class.forName("android.graphics.Rect");
-                                                Object r = rect.getConstructor(Integer.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE)
+                                                Class<?> rectCls = Class.forName("android.graphics.Rect");
+                                                Object rect = rectCls.getConstructor(Integer.TYPE, Integer.TYPE, Integer.TYPE, Integer.TYPE)
                                                     .newInstance(loc[0], loc[1], loc[0] + v.getWidth(), loc[1] + v.getHeight());
-                                                build.getMethod("setSourceRect", rect).invoke(builder, r);
-                                            } catch (Throwable e) {
-                                                // setSourceRect not available, capture full display
-                                            }
-                                            Object args = build.getMethod("build").invoke(builder);
-                                            Object syncListener = sc.getMethod("createSyncCaptureListener").invoke(null);
+                                                builderCls.getMethod("setSourceRect", rectCls).invoke(builder, rect);
+                                            } catch (Throwable ignored) {}
 
-                                            wms.getClass().getMethod("captureDisplay", Integer.TYPE, capArgs, 
-                                                Class.forName("android.window.ScreenCapture$ScreenCaptureListener"))
-                                                .invoke(wms, 0, args, syncListener);
-
-                                            Object hwBuf = sync.getClass().getMethod("getBuffer").invoke(syncListener);
-                                            Bitmap bmp = (Bitmap) buffer.getMethod("asBitmap").invoke(hwBuf);
-                                            if (bmp != null) {
-                                                return Bitmap.createScaledBitmap(bmp, v.getWidth()/3, v.getHeight()/3, true);
+                                            Object args = builderCls.getMethod("build").invoke(builder);
+                                            
+                                            // Use IWindowManager interface, not wms.getClass()
+                                            Class<?> iwm = Class.forName("android.view.IWindowManager");
+                                            java.lang.reflect.Method captureMethod = iwm.getMethod("captureDisplay", 
+                                                Integer.TYPE, argsCls, listenerCls);
+                                            
+                                            Object syncListener = Class.forName("android.window.ScreenCapture")
+                                                .getMethod("createSyncCaptureListener").invoke(null);
+                                            
+                                            captureMethod.invoke(wms, 0, args, syncListener);
+                                            
+                                            Object hwBuf = syncCls.getMethod("getBuffer").invoke(syncListener);
+                                            if (hwBuf != null) {
+                                                Bitmap bmp = (Bitmap) bufCls.getMethod("asBitmap").invoke(hwBuf);
+                                                if (bmp != null) {
+                                                    return Bitmap.createScaledBitmap(bmp, v.getWidth()/3, v.getHeight()/3, true);
+                                                }
                                             }
                                         } catch (Throwable e) {
-                                            XposedBridge.log("[DC] captureDisplay failed: " + e.getClass().getSimpleName());
+                                            XposedBridge.log("[DC] capture failed: " + e.getClass().getSimpleName() + " " + e.getMessage());
                                         }
                                         return null;
                                     }
