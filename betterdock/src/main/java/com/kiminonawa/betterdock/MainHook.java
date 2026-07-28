@@ -207,23 +207,29 @@ public class MainHook implements IXposedHookLoadPackage {
                                     }
 
                                     if ("none".equals(lightMode)) {
-                                        Paint s = new Paint(Paint.ANTI_ALIAS_FLAG); s.setStyle(Paint.Style.STROKE);
-                                        s.setStrokeWidth(4f); s.setColor(Color.argb(200,255,255,255));
-                                        canvas.drawRoundRect(1,1,w-1,h-1,r,r,s); return;
+                                        Paint s = new Paint(Paint.ANTI_ALIAS_FLAG); s.setStyle(Paint.Style.FILL);
+                                        s.setColor(Color.argb(200,255,255,255));
+                                        canvas.drawRoundRect(0,0,w,h, r,r, s);
+                                        s.setColor(Color.argb(0,255,255,255)); s.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
+                                        canvas.drawRoundRect(4,4,w-4,h-4, r-4f,r-4f, s); return;
                                     }
 
                                     boolean dyn = "dynamic".equals(lightMode);
                                     float s1x = dyn ? w*(0.5f+gyroY*0.3f) : w*0.5f;
                                     float s1y = dyn ? h*(0.5f+gyroX*0.3f) : h*0.5f;
-                                    Paint base = new Paint(Paint.ANTI_ALIAS_FLAG); base.setStyle(Paint.Style.STROKE);
-                                    base.setStrokeWidth(4f); base.setColor(Color.argb(120,255,255,255));
-                                    Paint s1p = new Paint(Paint.ANTI_ALIAS_FLAG); s1p.setStyle(Paint.Style.STROKE);
-                                    s1p.setStrokeWidth(4f);
+                                    Paint base = new Paint(Paint.ANTI_ALIAS_FLAG); base.setStyle(Paint.Style.FILL);
+                                    base.setColor(Color.argb(120,255,255,255));
+                                    canvas.drawRoundRect(0,0,w,h, r,r, base);
+                                    base.setColor(Color.argb(0,255,255,255)); base.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
+                                    canvas.drawRoundRect(4,4,w-4,h-4, r-4f,r-4f, base);
+
+                                    Paint s1p = new Paint(Paint.ANTI_ALIAS_FLAG); s1p.setStyle(Paint.Style.FILL);
                                     s1p.setShader(new RadialGradient(s1x,s1y,maxDim*0.4f,
                                         new int[]{Color.argb(255,255,255,255),Color.argb(120,255,255,255),Color.argb(0,255,255,255)},
                                         new float[]{0f,0.5f,1f}, Shader.TileMode.CLAMP));
-                                    canvas.drawRoundRect(1,1,w-1,h-1,r,r,base);
-                                    canvas.drawRoundRect(1,1,w-1,h-1,r,r,s1p);
+                                    canvas.drawRoundRect(0,0,w,h, r,r, s1p);
+                                    s1p.setColor(Color.argb(0,255,255,255)); s1p.setShader(null); s1p.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
+                                    canvas.drawRoundRect(4,4,w-4,h-4, r-4f,r-4f, s1p);
                                 }
                             };
                             overlay.setId(View.generateViewId());
