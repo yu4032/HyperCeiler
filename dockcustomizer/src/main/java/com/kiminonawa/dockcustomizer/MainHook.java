@@ -182,12 +182,45 @@ public class MainHook implements IXposedHookLoadPackage {
                                     float r = Math.max(0, useSquircle ? bgR + squircleStrokeOffset : bgR - 1f);
                                     float maxDim = Math.max(w, h);
 
-                                    if ("none".equals(lightMode)) {
-                                        Paint s = new Paint(Paint.ANTI_ALIAS_FLAG);
-                                        s.setStyle(Paint.Style.STROKE); s.setStrokeWidth(6f);
-                                        s.setColor(Color.argb(200, 255, 255, 255));
-                                        if (useSquircle) canvas.drawPath(squirclePath(new RectF(1,1,w-1,h-1),r), s);
-                                        else canvas.drawRoundRect(1, 1, w-1, h-1, r, r, s);
+                                    // Squircle stroke: fill outer - fill inner = perfect edge
+                                    if (useSquircle) {
+                                        float strokeW = 6f;
+                                        float off = squircleStrokeOffset;
+                                        Path outer = squirclePath(new RectF(-off, -off, w+off, h+off), r);
+                                        Path inner = squirclePath(new RectF(-off+strokeW, -off+strokeW, w+off-strokeW, h+off-strokeW), r - strokeW * 0.5f);
+
+                                        Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                        fill.setStyle(Paint.Style.FILL);
+
+                                        String mode = lightMode;
+                                        if ("none".equals(mode)) {
+                                            fill.setColor(Color.argb(200, 255, 255, 255));
+                                            canvas.drawPath(outer, fill);
+                                            fill.setColor(Color.argb(0, 255, 255, 255));
+                                            canvas.drawPath(inner, fill);
+                                            return;
+                                        }
+
+                                        // Base gray
+                                        fill.setColor(Color.argb(120, 255, 255, 255));
+                                        canvas.drawPath(outer, fill);
+                                        fill.setColor(Color.argb(0, 255, 255, 255));
+                                        canvas.drawPath(inner, fill);
+
+                                        // Source highlight on squircle
+                                        boolean dyn = "dynamic".equals(mode);
+                                        float s1x = dyn ? w*(0.5f+gyroY*0.3f) : w*0.5f;
+                                        float s1y = dyn ? h*(0.5f+gyroX*0.3f) : h*0.5f;
+                                        Paint s1p = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                        s1p.setStyle(Paint.Style.FILL);
+                                        s1p.setShader(new RadialGradient(s1x, s1y, maxDim*0.4f,
+                                            new int[]{Color.argb(255,255,255,255),
+                                                      Color.argb(120,255,255,255),
+                                                      Color.argb(0,255,255,255)},
+                                            new float[]{0f,0.5f,1f}, Shader.TileMode.CLAMP));
+                                        canvas.drawPath(outer, s1p);
+                                        fill.setColor(Color.argb(0, 255, 255, 255));
+                                        canvas.drawPath(inner, fill);
                                         return;
                                     }
 
