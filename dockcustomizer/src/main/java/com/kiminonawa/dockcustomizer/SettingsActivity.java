@@ -10,6 +10,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.io.DataOutputStream;
@@ -38,6 +39,9 @@ public class SettingsActivity extends Activity {
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(48, 96, 48, 48);
         layout.setFitsSystemWindows(true);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(layout);
 
         TextView title = new TextView(this);
         title.setText("DockCustomizer");
@@ -159,7 +163,7 @@ public class SettingsActivity extends Activity {
         });
         layout.addView(apply);
 
-        setContentView(layout);
+        setContentView(scroll);
     }
 
     private TextView label(String text) {
