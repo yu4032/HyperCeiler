@@ -5,6 +5,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RadialGradient;
@@ -155,23 +156,54 @@ public class MainHook implements IXposedHookLoadPackage {
                                     @Override protected void onDraw(Canvas canvas) {
                                         if (bgW < 1 || bgH < 1) return;
                                         float w = bgW, h = bgH, r = Math.max(0, bgR);
-                                        // Glass tint fill
-                                        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-                                        p.setStyle(Paint.Style.FILL);
-                                        int tint = lgTint;
-                                        int a = Color.alpha(tint) * lgAlpha / 255;
-                                        p.setColor(Color.argb(a, Color.red(tint), Color.green(tint), Color.blue(tint)));
+                                        int a = Color.alpha(lgTint) * lgAlpha / 255;
+
+                                        // Refraction gradient (gyro-driven specular highlight and shadow)
+                                        float sx = gyroY * 0.5f; // horizontal shift from Y-rotation
+                                        float sy = gyroX * 0.5f; // vertical shift from X-rotation
+
+                                        // Specular highlight gradient (top-left to bottom-right, shifted by gyro)
+                                        float hlx1 = w*(0.2f + sx), hly1 = h*(0.1f + sy);
+                                        float hlx2 = w*(0.6f + sx), hly2 = h*(0.4f + sy);
+                                        Paint highlight = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                        highlight.setStyle(Paint.Style.FILL);
+                                        highlight.setShader(new LinearGradient(hlx1, hly1, hlx2, hly2,
+                                            new int[]{Color.argb(lgAlpha, 255,255,255),
+                                                      Color.argb(lgAlpha/3, 255,255,255),
+                                                      Color.argb(0,255,255,255)},
+                                            new float[]{0f, 0.3f, 1f}, Shader.TileMode.CLAMP));
+
+                                        // Shadow gradient (opposite side)
+                                        float shx1 = w*(0.8f - sx), shy1 = h*(0.8f - sy);
+                                        float shx2 = w*(0.5f - sx), shy2 = h*(0.7f - sy);
+                                        Paint shadow = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                        shadow.setStyle(Paint.Style.FILL);
+                                        shadow.setShader(new LinearGradient(shx1, shy1, shx2, shy2,
+                                            new int[]{Color.argb(lgAlpha/2, 0,0,0),
+                                                      Color.argb(0,0,0,0)},
+                                            new float[]{0f, 1f}, Shader.TileMode.CLAMP));
+
+                                        // Tint fill
+                                        Paint tint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                                        tint.setStyle(Paint.Style.FILL);
+                                        tint.setColor(Color.argb(a, Color.red(lgTint), Color.green(lgTint), Color.blue(lgTint)));
+
                                         if (useSquircle) {
-                                            canvas.drawPath(squirclePath(new RectF(0,0,w,h), r), p);
-                                            // Chromatic aberration: slight RGB shift
+                                            Path path = squirclePath(new RectF(0,0,w,h), r);
+                                            canvas.drawPath(path, shadow);
+                                            canvas.drawPath(path, tint);
+                                            canvas.drawPath(path, highlight);
+                                            // Chromatic aberration
                                             Paint rShift = new Paint(Paint.ANTI_ALIAS_FLAG); rShift.setStyle(Paint.Style.STROKE);
-                                            rShift.setStrokeWidth(3f); rShift.setColor(Color.argb(a/4, 255, 0, 0));
+                                            rShift.setStrokeWidth(3f); rShift.setColor(Color.argb(a/4,255,0,0));
                                             canvas.drawPath(squirclePath(new RectF(-2,-2,w+2,h+2), r+2), rShift);
                                             Paint bShift = new Paint(Paint.ANTI_ALIAS_FLAG); bShift.setStyle(Paint.Style.STROKE);
-                                            bShift.setStrokeWidth(3f); bShift.setColor(Color.argb(a/4, 0, 0, 255));
+                                            bShift.setStrokeWidth(3f); bShift.setColor(Color.argb(a/4,0,0,255));
                                             canvas.drawPath(squirclePath(new RectF(2,2,w-2,h-2), r-2), bShift);
                                         } else {
-                                            canvas.drawRoundRect(0,0,w,h, r,r, p);
+                                            canvas.drawRoundRect(0,0,w,h, r,r, shadow);
+                                            canvas.drawRoundRect(0,0,w,h, r,r, tint);
+                                            canvas.drawRoundRect(0,0,w,h, r,r, highlight);
                                             Paint rShift = new Paint(Paint.ANTI_ALIAS_FLAG); rShift.setStyle(Paint.Style.STROKE);
                                             rShift.setStrokeWidth(3f); rShift.setColor(Color.argb(a/4,255,0,0));
                                             canvas.drawRoundRect(-2,-2,w+2,h+2, r+2,r+2, rShift);
