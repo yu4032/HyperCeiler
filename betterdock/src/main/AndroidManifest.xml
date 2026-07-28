@@ -7,7 +7,7 @@
             android:name=".SettingsActivity"
             android:exported="true"
             android:theme="@android:style/Theme.DeviceDefault.Light"
-            android:label="DockCustomizer">
+            android:label="BetterDock">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

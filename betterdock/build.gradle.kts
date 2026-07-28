@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = "com.kiminonawa.dockcustomizer"
+    namespace = "com.kiminonawa.betterdock"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.kiminonawa.dockcustomizer"
+        applicationId = "com.kiminonawa.betterdock"
         minSdk = 33
         targetSdk = 37
         versionCode = 1

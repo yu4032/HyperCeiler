@@ -1,4 +1,4 @@
-package com.kiminonawa.dockcustomizer;
+package com.kiminonawa.betterdock;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -44,7 +44,7 @@ public class SettingsActivity extends Activity {
         scroll.addView(layout);
 
         TextView title = new TextView(this);
-        title.setText("DockCustomizer");
+        title.setText("BetterDock");
         title.setTextSize(22);
         layout.addView(title);
 

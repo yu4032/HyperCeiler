@@ -1,4 +1,4 @@
-package com.kiminonawa.dockcustomizer;
+package com.kiminonawa.betterdock;
 
 import android.graphics.Canvas;
 import android.graphics.Color;

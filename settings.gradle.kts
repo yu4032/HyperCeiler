@@ -77,4 +77,4 @@ include(
     ":library:processor",
     ":library:hidden-api",
 )
-include(":dockcustomizer")
+include(":betterdock")
