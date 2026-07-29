@@ -142,40 +142,28 @@ public class MainHook implements IXposedHookLoadPackage {
                     });
             } catch (Throwable ignored) {}
 
-            // Widget bloom: hook widget host views
+            // Widget bloom: hook MaMlWidgetView dispatchDraw
             try {
                 XposedHelpers.findAndHookMethod(
-                    "com.miui.home.launcher.widget.LauncherAppWidgetHostViewContainer",
-                    lpparam.classLoader, "onFinishInflate", new XC_MethodHook() {
+                    "com.miui.home.launcher.maml.MaMlWidgetView",
+                    lpparam.classLoader, "dispatchDraw", Canvas.class, new XC_MethodHook() {
                         @Override protected void afterHookedMethod(MethodHookParam p) {
-                            View container = (View) p.thisObject;
-                            XposedBridge.log("[DC] widget container: " + container.getClass().getSimpleName());
-                            if (widgetOverlays.containsKey(container)) return;
-                            ViewGroup vp = (ViewGroup) container.getParent();
-                            if (vp == null) return;
-                            try {
-                                View wo = new View(container.getContext()) {
-                                    @Override protected void onDraw(Canvas canvas) {
-                                        float wf=getWidth(),hf=getHeight(),wr=28f;
-                                        if(wf<1||hf<1)return;
-                                        Paint b=new Paint(Paint.ANTI_ALIAS_FLAG);b.setStyle(Paint.Style.FILL);
-                                        b.setColor(Color.argb(255,255,0,0)); // debug: solid red
-                                        canvas.drawRoundRect(0,0,wf,hf,wr,wr,b);
-                                        Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG); glow.setStyle(Paint.Style.FILL);
-                                        glow.setShader(new LinearGradient(0,0,0,100f,
-                                            new int[]{Color.argb(40,255,255,255),Color.argb(0,255,255,255)},
-                                            new float[]{0f,1f},Shader.TileMode.CLAMP));
-                                        canvas.drawRoundRect(0,0,wf,hf,wr,wr,glow);
-                                    }
-                                };
-                                wo.setLayoutParams(new FrameLayout.LayoutParams(-1,-1));
-                                vp.addView(wo,vp.indexOfChild(container)+1);
-                                widgetOverlays.put(container,wo);
-                            } catch (Throwable ignored) {}
+                            View v = (View) p.thisObject;
+                            Canvas canvas = (Canvas) p.args[0];
+                            float wf=v.getWidth(),hf=v.getHeight(),wr=28f;
+                            if(wf<1||hf<1)return;
+                            Paint b=new Paint(Paint.ANTI_ALIAS_FLAG);b.setStyle(Paint.Style.FILL);
+                            b.setColor(Color.argb(60,255,255,255));
+                            canvas.drawRoundRect(0,0,wf,hf,wr,wr,b);
+                            Paint glow=new Paint(Paint.ANTI_ALIAS_FLAG);glow.setStyle(Paint.Style.FILL);
+                            glow.setShader(new LinearGradient(0,0,0,hf*0.4f,
+                                new int[]{Color.argb(40,255,255,255),Color.argb(0,255,255,255)},
+                                new float[]{0f,1f},Shader.TileMode.CLAMP));
+                            canvas.drawRoundRect(0,0,wf,hf,wr,wr,glow);
                         }
                     });
             } catch (Throwable e) {
-                XposedBridge.log("[DC] widget container hook: "+e.getClass().getSimpleName());
+                XposedBridge.log("[DC] widget draw hook: "+e.getClass().getSimpleName());
             }
 
             // setupViews
