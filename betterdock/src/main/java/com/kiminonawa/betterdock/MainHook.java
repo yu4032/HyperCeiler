@@ -145,7 +145,7 @@ public class MainHook implements IXposedHookLoadPackage {
             // Widget bloom
             XposedHelpers.findAndHookMethod(
                 "com.miui.home.launcher.widget.LauncherAppWidgetHostViewContainer",
-                lpparam.classLoader, "onDraw", Canvas.class, new XC_MethodHook() {
+                lpparam.classLoader, "dispatchDraw", Canvas.class, new XC_MethodHook() {
                     @Override protected void afterHookedMethod(MethodHookParam p) {
                         View v = (View) p.thisObject;
                         XposedBridge.log("[DC] widget onDraw: "+v.getClass().getSimpleName()+" "+v.getWidth()+"x"+v.getHeight());
