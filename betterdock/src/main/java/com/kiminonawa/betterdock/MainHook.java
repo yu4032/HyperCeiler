@@ -143,34 +143,29 @@ public class MainHook implements IXposedHookLoadPackage {
             } catch (Throwable ignored) {}
 
             // Widget bloom overlay on MaMlWidgetView
-            try {
-                XposedHelpers.findAndHookMethod(
-                    "com.miui.home.launcher.widget.LauncherAppWidgetHostViewContainer",
-                    lpparam.classLoader, "onFinishInflate", new XC_MethodHook() {
-                        @Override protected void afterHookedMethod(MethodHookParam p) {
-                            final View widget = (View) p.thisObject;
-                            if (widgetOverlays.containsKey(widget)) return;
-                            ViewGroup parent = (ViewGroup) widget.getParent();
-                            if (parent == null) return;
-                            View wo = new View(widget.getContext()) {
-                                @Override protected void onDraw(Canvas canvas) {
-                                    if (getWidth()<10||getHeight()<10) return;
-                                    float wr = 28f;
-                                    Paint b = new Paint(Paint.ANTI_ALIAS_FLAG); b.setStyle(Paint.Style.FILL);
-                                    b.setColor(Color.argb(50,255,255,255));
-                                    canvas.drawRoundRect(0,0,getWidth(),getHeight(),wr,wr,b);
-                                }
-                            };
-                            wo.setLayoutParams(new FrameLayout.LayoutParams(
-                                widget.getLayoutParams().width, widget.getLayoutParams().height));
-                            parent.addView(wo, parent.indexOfChild(widget)+1);
-                            widgetOverlays.put(widget, wo);
-                            XposedBridge.log("[DC] widget overlay added: " + widget.getClass().getSimpleName());
-                        }
-                    });
-            } catch (Throwable e) {
-                XposedBridge.log("[DC] widget hook: "+e.getClass().getSimpleName());
-            }
+            XposedHelpers.findAndHookMethod(
+                "com.miui.home.launcher.widget.LauncherAppWidgetHostViewContainer",
+                lpparam.classLoader, "onFinishInflate", new XC_MethodHook() {
+                    @Override protected void afterHookedMethod(MethodHookParam p) {
+                        final View widget = (View) p.thisObject;
+                        XposedBridge.log("[DC] widget inflate: " + widget.getClass().getSimpleName());
+                        if (widgetOverlays.containsKey(widget)) return;
+                        ViewGroup parent = (ViewGroup) widget.getParent();
+                        if (parent == null) return;
+                        View wo = new View(widget.getContext()) {
+                            @Override protected void onDraw(Canvas canvas) {
+                                if (getWidth()<10||getHeight()<10) return;
+                                Paint b = new Paint(Paint.ANTI_ALIAS_FLAG); b.setStyle(Paint.Style.FILL);
+                                b.setColor(Color.argb(255,255,0,0));
+                                canvas.drawRoundRect(0,0,getWidth(),getHeight(),28f,28f,b);
+                            }
+                        };
+                        wo.setLayoutParams(new FrameLayout.LayoutParams(
+                            widget.getLayoutParams().width, widget.getLayoutParams().height));
+                        parent.addView(wo, parent.indexOfChild(widget)+1);
+                        widgetOverlays.put(widget, wo);
+                    }
+                });
 
             // setupViews
             XposedHelpers.findAndHookMethod("com.miui.home.launcher.Launcher", lpparam.classLoader,
