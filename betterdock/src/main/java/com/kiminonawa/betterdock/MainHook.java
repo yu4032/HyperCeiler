@@ -142,24 +142,24 @@ public class MainHook implements IXposedHookLoadPackage {
                     });
             } catch (Throwable ignored) {}
 
-            // Widget bloom: hook View.draw filtered to MaMlWidgetView
+            // Widget bloom: hook LauncherAppWidgetHostViewContainer.onDraw (MaMlWidgetView parent)
             try {
-                XposedHelpers.findAndHookMethod(View.class, "draw", Canvas.class,
-                    new XC_MethodHook() {
+                XposedHelpers.findAndHookMethod(
+                    "com.miui.home.launcher.widget.LauncherAppWidgetHostViewContainer",
+                    lpparam.classLoader, "onDraw", Canvas.class, new XC_MethodHook() {
                         @Override protected void afterHookedMethod(MethodHookParam p) {
                             View v = (View) p.thisObject;
-                            if (!v.getClass().getName().contains("MaMlWidgetView")) return;
                             Canvas canvas = (Canvas) p.args[0];
                             float wf=v.getWidth(),hf=v.getHeight(),wr=28f;
-                            if(wf<1||hf<1||canvas==null)return;
+                            if(wf<10||hf<10||canvas==null)return;
                             Paint b=new Paint(Paint.ANTI_ALIAS_FLAG);b.setStyle(Paint.Style.FILL);
                             b.setColor(Color.argb(255,255,0,0));
                             canvas.drawRoundRect(0,0,wf,hf,wr,wr,b);
-                            XposedBridge.log("[DC] widget draw: "+wf+"x"+hf);
+                            XposedBridge.log("[DC] widget onDraw: "+wf+"x"+hf+" "+v.getClass().getSimpleName());
                         }
                     });
             } catch (Throwable e) {
-                XposedBridge.log("[DC] widget vdraw: "+e.getClass().getSimpleName());
+                XposedBridge.log("[DC] widget od: "+e.getClass().getSimpleName());
             }
 
             // setupViews
