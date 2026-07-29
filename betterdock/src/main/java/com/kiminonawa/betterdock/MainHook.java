@@ -142,40 +142,36 @@ public class MainHook implements IXposedHookLoadPackage {
                     });
             } catch (Throwable ignored) {}
 
-            // Widget bloom: add highlight overlay to all widget backgrounds
+            // Widget bloom: hook widget host views
             try {
-                Class<?> bu2 = XposedHelpers.findClass("com.miui.home.launcher.common.BlurUtilities", lpparam.classLoader);
-                XposedHelpers.findAndHookMethod(bu2, "setWidgetBackgroundBlendColors", View.class,
-                    new XC_MethodHook() {
+                XposedHelpers.findAndHookMethod(
+                    "com.miui.home.launcher.widget.LauncherAppWidgetHostViewContainer",
+                    lpparam.classLoader, "onFinishInflate", new XC_MethodHook() {
                         @Override protected void afterHookedMethod(MethodHookParam p) {
-                            View widget = (View) p.args[0];
-                            XposedBridge.log("[DC] widget hook: " + (widget!=null?widget.getClass().getSimpleName():"null"));
-                            if (widget == null || widgetOverlays.containsKey(widget)) return;
-                            ViewGroup wp = (ViewGroup) widget.getParent();
-                            if (wp == null) return;
+                            View container = (View) p.thisObject;
+                            XposedBridge.log("[DC] widget container: " + container.getClass().getSimpleName());
+                            if (widgetOverlays.containsKey(container)) return;
+                            ViewGroup vp = (ViewGroup) container.getParent();
+                            if (vp == null) return;
                             try {
-                                float wr = 20f; // default widget corner radius
-                                View wOverlay = new View(widget.getContext()) {
+                                View wo = new View(container.getContext()) {
                                     @Override protected void onDraw(Canvas canvas) {
-                                        float wf = getWidth(), hf = getHeight();
-                                        if (wf<1||hf<1) return;
-                                        Paint b = new Paint(Paint.ANTI_ALIAS_FLAG); b.setStyle(Paint.Style.FILL);
+                                        float wf=getWidth(),hf=getHeight(),wr=28f;
+                                        if(wf<1||hf<1)return;
+                                        Paint b=new Paint(Paint.ANTI_ALIAS_FLAG);b.setStyle(Paint.Style.FILL);
                                         b.setColor(Color.argb(80,255,255,255));
-                                        canvas.drawRoundRect(0,0,wf,hf, wr,wr, b);
-                                        Paint s = new Paint(Paint.ANTI_ALIAS_FLAG); s.setStyle(Paint.Style.FILL);
-                                        s.setShader(new LinearGradient(0,0,wf*0.6f,0,
-                                            new int[]{Color.argb(60,255,255,255),Color.argb(0,255,255,255)},
-                                            new float[]{0f,1f},Shader.TileMode.CLAMP));
-                                        canvas.drawRoundRect(0,0,wf,hf, wr,wr, s);
+                                        canvas.drawRoundRect(0,0,wf,hf,wr,wr,b);
                                     }
                                 };
-                                wOverlay.setLayoutParams(new FrameLayout.LayoutParams(-1,-1));
-                                wp.addView(wOverlay, wp.indexOfChild(widget)+1);
-                                widgetOverlays.put(widget, wOverlay);
+                                wo.setLayoutParams(new FrameLayout.LayoutParams(-1,-1));
+                                vp.addView(wo,vp.indexOfChild(container)+1);
+                                widgetOverlays.put(container,wo);
                             } catch (Throwable ignored) {}
                         }
                     });
-            } catch (Throwable ignored) {}
+            } catch (Throwable e) {
+                XposedBridge.log("[DC] widget container hook: "+e.getClass().getSimpleName());
+            }
 
             // setupViews
             XposedHelpers.findAndHookMethod("com.miui.home.launcher.Launcher", lpparam.classLoader,
