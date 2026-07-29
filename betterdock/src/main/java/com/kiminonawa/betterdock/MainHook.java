@@ -28,7 +28,6 @@ import java.io.FileInputStream;
 public class MainHook implements IXposedHookLoadPackage {
 
     private static View overlay, glassOverlay, oldBg;
-    private static java.util.Map<View,View> widgetOverlays = new java.util.WeakHashMap<>();
     private static int bgW, bgH;
     private static float bgR = 30f;
     private static float gyroX, gyroY, smoothLx, smoothLy;
@@ -141,36 +140,6 @@ public class MainHook implements IXposedHookLoadPackage {
                         }
                     });
             } catch (Throwable ignored) {}
-
-            // Widget bloom overlay on MaMlWidgetView
-            XposedHelpers.findAndHookMethod(
-                "com.miui.home.launcher.widget.LauncherAppWidgetHostViewContainer",
-                lpparam.classLoader, "onFinishInflate", new XC_MethodHook() {
-                    @Override protected void afterHookedMethod(MethodHookParam p) {
-                        final View widget = (View) p.thisObject;
-                        XposedBridge.log("[DC] widget inflate: " + widget.getClass().getSimpleName());
-                        if (widgetOverlays.containsKey(widget)) return;
-                        final ViewGroup vp = (ViewGroup) widget.getParent();
-                        if (vp == null) return;
-                        widget.post(new Runnable() { public void run() {
-                            int w = widget.getWidth(), h = widget.getHeight();
-                            if (w<10||h<10) return;
-                            View wo = new View(widget.getContext()) {
-                                @Override protected void onDraw(Canvas canvas) {
-                                    Paint b = new Paint(Paint.ANTI_ALIAS_FLAG); b.setStyle(Paint.Style.FILL);
-                                    b.setColor(Color.argb(255,255,0,0));
-                                    canvas.drawRoundRect(0,0,getWidth(),getHeight(),28f,28f,b);
-                                }
-                            };
-                            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(w, h);
-                            lp.leftMargin = widget.getLeft(); lp.topMargin = widget.getTop();
-                            wo.setLayoutParams(lp);
-                            vp.addView(wo);
-                            widgetOverlays.put(widget, wo);
-                            XposedBridge.log("[DC] widget overlayed: " + w + "x" + h);
-                        }});
-                    }
-                });
 
             // setupViews
             XposedHelpers.findAndHookMethod("com.miui.home.launcher.Launcher", lpparam.classLoader,
