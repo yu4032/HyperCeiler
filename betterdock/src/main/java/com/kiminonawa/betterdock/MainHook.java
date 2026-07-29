@@ -142,14 +142,14 @@ public class MainHook implements IXposedHookLoadPackage {
                     });
             } catch (Throwable ignored) {}
 
-            // Widget bloom: search by hooking all onDraw
-            XposedHelpers.findAndHookMethod(View.class, "onDraw", Canvas.class,
+            // Hook View.draw to find widgets
+            XposedHelpers.findAndHookMethod(View.class, "draw", Canvas.class,
                 new XC_MethodHook() {
                     @Override protected void afterHookedMethod(MethodHookParam p) {
                         View v = (View) p.thisObject;
                         String cn = v.getClass().getName();
-                        if (cn.contains("Widget") || cn.contains("widget") || cn.contains("MaMl")) {
-                            XposedBridge.log("[DC] widget candidate: " + cn + " " + v.getWidth() + "x" + v.getHeight());
+                        if (cn.contains("Widget") || cn.contains("MaMl")) {
+                            XposedBridge.log("[DC] widget: " + cn + " " + v.getWidth() + "x" + v.getHeight());
                             Canvas canvas = (Canvas) p.args[0];
                             Paint b = new Paint(Paint.ANTI_ALIAS_FLAG); b.setStyle(Paint.Style.FILL);
                             b.setColor(Color.argb(150,255,0,0));
