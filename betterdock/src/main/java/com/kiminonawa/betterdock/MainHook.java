@@ -144,9 +144,11 @@ public class MainHook implements IXposedHookLoadPackage {
 
             XposedHelpers.findAndHookMethod(View.class, "draw", Canvas.class,
                 new XC_MethodHook() {
-                    static int count;
                     @Override protected void afterHookedMethod(MethodHookParam p) {
-                        if (count++ < 5) XposedBridge.log("[DC] View.draw: " + p.thisObject.getClass().getName());
+                        String cn = p.thisObject.getClass().getName();
+                        if (cn.contains("Widget")||cn.contains("MaMl")||cn.contains("Launcher")) {
+                            XposedBridge.log("[DC] found: " + cn);
+                        }
                     }
                 });
 
