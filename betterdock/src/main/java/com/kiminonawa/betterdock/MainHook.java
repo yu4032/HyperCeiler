@@ -28,6 +28,7 @@ import java.io.FileInputStream;
 public class MainHook implements IXposedHookLoadPackage {
 
     private static View overlay, glassOverlay, oldBg;
+    private static java.util.Map<View,View> widgetOverlays = new java.util.WeakHashMap<>();
     private static int bgW, bgH;
     private static float bgR = 30f;
     private static float gyroX, gyroY, smoothLx, smoothLy;
@@ -137,6 +138,40 @@ public class MainHook implements IXposedHookLoadPackage {
                     new XC_MethodHook() {
                         @Override protected void beforeHookedMethod(MethodHookParam p) {
                             if (useSquircle) p.setResult(null);
+                        }
+                    });
+            } catch (Throwable ignored) {}
+
+            // Widget bloom: add highlight overlay to all widget backgrounds
+            try {
+                Class<?> bu2 = XposedHelpers.findClass("com.miui.home.launcher.common.BlurUtilities", lpparam.classLoader);
+                XposedHelpers.findAndHookMethod(bu2, "setWidgetBackgroundBlendColors", View.class,
+                    new XC_MethodHook() {
+                        @Override protected void afterHookedMethod(MethodHookParam p) {
+                            View widget = (View) p.args[0];
+                            if (widget == null || widgetOverlays.containsKey(widget)) return;
+                            ViewGroup wp = (ViewGroup) widget.getParent();
+                            if (wp == null) return;
+                            try {
+                                float wr = 20f; // default widget corner radius
+                                View wOverlay = new View(widget.getContext()) {
+                                    @Override protected void onDraw(Canvas canvas) {
+                                        float wf = getWidth(), hf = getHeight();
+                                        if (wf<1||hf<1) return;
+                                        Paint b = new Paint(Paint.ANTI_ALIAS_FLAG); b.setStyle(Paint.Style.FILL);
+                                        b.setColor(Color.argb(80,255,255,255));
+                                        canvas.drawRoundRect(0,0,wf,hf, wr,wr, b);
+                                        Paint s = new Paint(Paint.ANTI_ALIAS_FLAG); s.setStyle(Paint.Style.FILL);
+                                        s.setShader(new LinearGradient(0,0,wf*0.6f,0,
+                                            new int[]{Color.argb(60,255,255,255),Color.argb(0,255,255,255)},
+                                            new float[]{0f,1f},Shader.TileMode.CLAMP));
+                                        canvas.drawRoundRect(0,0,wf,hf, wr,wr, s);
+                                    }
+                                };
+                                wOverlay.setLayoutParams(new FrameLayout.LayoutParams(-1,-1));
+                                wp.addView(wOverlay, wp.indexOfChild(widget)+1);
+                                widgetOverlays.put(widget, wOverlay);
+                            } catch (Throwable ignored) {}
                         }
                     });
             } catch (Throwable ignored) {}
