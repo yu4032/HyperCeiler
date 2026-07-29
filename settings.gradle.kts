@@ -78,3 +78,4 @@ include(
     ":library:hidden-api",
 )
 include(":betterdock")
+include(":smartdock")
