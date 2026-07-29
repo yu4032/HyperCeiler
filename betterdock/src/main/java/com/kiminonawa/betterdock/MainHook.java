@@ -142,24 +142,25 @@ public class MainHook implements IXposedHookLoadPackage {
                     });
             } catch (Throwable ignored) {}
 
-            // Widget bloom: hook MaMlWidgetView draw
+            // Widget bloom: draw on widget foreground
             try {
-                XposedHelpers.findAndHookMethod(
-                    "com.miui.home.launcher.maml.MaMlWidgetView",
-                    lpparam.classLoader, "draw", Canvas.class, new XC_MethodHook() {
+                Class<?> wc = XposedHelpers.findClass(
+                    "com.miui.home.launcher.maml.MaMlWidgetView", lpparam.classLoader);
+                XposedHelpers.findAndHookMethod(wc, "onDrawForeground", Canvas.class,
+                    new XC_MethodHook() {
                         @Override protected void afterHookedMethod(MethodHookParam p) {
                             View v = (View) p.thisObject;
                             Canvas canvas = (Canvas) p.args[0];
                             float wf=v.getWidth(),hf=v.getHeight(),wr=28f;
                             if(wf<1||hf<1||canvas==null)return;
                             Paint b=new Paint(Paint.ANTI_ALIAS_FLAG);b.setStyle(Paint.Style.FILL);
-                            b.setColor(Color.argb(255,255,0,0)); // RED DEBUG
+                            b.setColor(Color.argb(255,255,0,0));
                             canvas.drawRoundRect(0,0,wf,hf,wr,wr,b);
-                            XposedBridge.log("[DC] widget draw: "+wf+"x"+hf);
+                            XposedBridge.log("[DC] widget fg: "+wf+"x"+hf);
                         }
                     });
             } catch (Throwable e) {
-                XposedBridge.log("[DC] widget draw hook: "+e.getClass().getSimpleName());
+                XposedBridge.log("[DC] widget fg hook: "+e.getClass().getSimpleName()+" "+e.getMessage());
             }
 
             // setupViews
