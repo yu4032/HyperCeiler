@@ -159,8 +159,13 @@ public class MainHook implements IXposedHookLoadPackage {
                                         float wf=getWidth(),hf=getHeight(),wr=28f;
                                         if(wf<1||hf<1)return;
                                         Paint b=new Paint(Paint.ANTI_ALIAS_FLAG);b.setStyle(Paint.Style.FILL);
-                                        b.setColor(Color.argb(80,255,255,255));
+                                        b.setColor(Color.argb(255,255,0,0)); // debug: solid red
                                         canvas.drawRoundRect(0,0,wf,hf,wr,wr,b);
+                                        Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG); glow.setStyle(Paint.Style.FILL);
+                                        glow.setShader(new LinearGradient(0,0,0,100f,
+                                            new int[]{Color.argb(40,255,255,255),Color.argb(0,255,255,255)},
+                                            new float[]{0f,1f},Shader.TileMode.CLAMP));
+                                        canvas.drawRoundRect(0,0,wf,hf,wr,wr,glow);
                                     }
                                 };
                                 wo.setLayoutParams(new FrameLayout.LayoutParams(-1,-1));
