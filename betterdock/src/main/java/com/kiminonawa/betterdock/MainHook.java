@@ -142,19 +142,11 @@ public class MainHook implements IXposedHookLoadPackage {
                     });
             } catch (Throwable ignored) {}
 
-            // Hook View.draw to find widgets
             XposedHelpers.findAndHookMethod(View.class, "draw", Canvas.class,
                 new XC_MethodHook() {
+                    static int count;
                     @Override protected void afterHookedMethod(MethodHookParam p) {
-                        View v = (View) p.thisObject;
-                        String cn = v.getClass().getName();
-                        if (cn.contains("Widget") || cn.contains("MaMl")) {
-                            XposedBridge.log("[DC] widget: " + cn + " " + v.getWidth() + "x" + v.getHeight());
-                            Canvas canvas = (Canvas) p.args[0];
-                            Paint b = new Paint(Paint.ANTI_ALIAS_FLAG); b.setStyle(Paint.Style.FILL);
-                            b.setColor(Color.argb(150,255,0,0));
-                            canvas.drawRoundRect(0,0,v.getWidth(),v.getHeight(),28f,28f,b);
-                        }
+                        if (count++ < 5) XposedBridge.log("[DC] View.draw: " + p.thisObject.getClass().getName());
                     }
                 });
 
