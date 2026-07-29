@@ -150,20 +150,25 @@ public class MainHook implements IXposedHookLoadPackage {
                         final View widget = (View) p.thisObject;
                         XposedBridge.log("[DC] widget inflate: " + widget.getClass().getSimpleName());
                         if (widgetOverlays.containsKey(widget)) return;
-                        ViewGroup parent = (ViewGroup) widget.getParent();
-                        if (parent == null) return;
-                        View wo = new View(widget.getContext()) {
-                            @Override protected void onDraw(Canvas canvas) {
-                                if (getWidth()<10||getHeight()<10) return;
-                                Paint b = new Paint(Paint.ANTI_ALIAS_FLAG); b.setStyle(Paint.Style.FILL);
-                                b.setColor(Color.argb(255,255,0,0));
-                                canvas.drawRoundRect(0,0,getWidth(),getHeight(),28f,28f,b);
-                            }
-                        };
-                        wo.setLayoutParams(new FrameLayout.LayoutParams(
-                            widget.getLayoutParams().width, widget.getLayoutParams().height));
-                        parent.addView(wo, parent.indexOfChild(widget)+1);
-                        widgetOverlays.put(widget, wo);
+                        final ViewGroup vp = (ViewGroup) widget.getParent();
+                        if (vp == null) return;
+                        widget.post(new Runnable() { public void run() {
+                            int w = widget.getWidth(), h = widget.getHeight();
+                            if (w<10||h<10) return;
+                            View wo = new View(widget.getContext()) {
+                                @Override protected void onDraw(Canvas canvas) {
+                                    Paint b = new Paint(Paint.ANTI_ALIAS_FLAG); b.setStyle(Paint.Style.FILL);
+                                    b.setColor(Color.argb(255,255,0,0));
+                                    canvas.drawRoundRect(0,0,getWidth(),getHeight(),28f,28f,b);
+                                }
+                            };
+                            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(w, h);
+                            lp.leftMargin = widget.getLeft(); lp.topMargin = widget.getTop();
+                            wo.setLayoutParams(lp);
+                            vp.addView(wo);
+                            widgetOverlays.put(widget, wo);
+                            XposedBridge.log("[DC] widget overlayed: " + w + "x" + h);
+                        }});
                     }
                 });
 
