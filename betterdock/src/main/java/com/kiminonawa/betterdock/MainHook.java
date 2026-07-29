@@ -142,17 +142,19 @@ public class MainHook implements IXposedHookLoadPackage {
                     });
             } catch (Throwable ignored) {}
 
-            // Widget bloom
-            XposedHelpers.findAndHookMethod(
-                "com.miui.home.launcher.widget.LauncherAppWidgetHostViewContainer",
-                lpparam.classLoader, "dispatchDraw", Canvas.class, new XC_MethodHook() {
+            // Widget bloom: search by hooking all onDraw
+            XposedHelpers.findAndHookMethod(View.class, "onDraw", Canvas.class,
+                new XC_MethodHook() {
                     @Override protected void afterHookedMethod(MethodHookParam p) {
                         View v = (View) p.thisObject;
-                        XposedBridge.log("[DC] widget onDraw: "+v.getClass().getSimpleName()+" "+v.getWidth()+"x"+v.getHeight());
-                        Canvas canvas = (Canvas) p.args[0];
-                        Paint b=new Paint(Paint.ANTI_ALIAS_FLAG);b.setStyle(Paint.Style.FILL);
-                        b.setColor(Color.argb(255,255,0,0));
-                        canvas.drawRoundRect(0,0,v.getWidth(),v.getHeight(),28f,28f,b);
+                        String cn = v.getClass().getName();
+                        if (cn.contains("Widget") || cn.contains("widget") || cn.contains("MaMl")) {
+                            XposedBridge.log("[DC] widget candidate: " + cn + " " + v.getWidth() + "x" + v.getHeight());
+                            Canvas canvas = (Canvas) p.args[0];
+                            Paint b = new Paint(Paint.ANTI_ALIAS_FLAG); b.setStyle(Paint.Style.FILL);
+                            b.setColor(Color.argb(150,255,0,0));
+                            canvas.drawRoundRect(0,0,v.getWidth(),v.getHeight(),28f,28f,b);
+                        }
                     }
                 });
 
