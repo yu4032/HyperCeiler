@@ -149,6 +149,7 @@ public class MainHook implements IXposedHookLoadPackage {
                     new XC_MethodHook() {
                         @Override protected void afterHookedMethod(MethodHookParam p) {
                             View widget = (View) p.args[0];
+                            XposedBridge.log("[DC] widget hook: " + (widget!=null?widget.getClass().getSimpleName():"null"));
                             if (widget == null || widgetOverlays.containsKey(widget)) return;
                             ViewGroup wp = (ViewGroup) widget.getParent();
                             if (wp == null) return;
