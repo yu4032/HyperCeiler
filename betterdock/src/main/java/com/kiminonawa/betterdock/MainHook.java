@@ -44,6 +44,7 @@ public class MainHook implements IXposedHookLoadPackage {
     private static int strokeW = 2, stdStrokeW = 4;
     private static int lgAlpha = 80;
     private static int lgTint = 0x38FFFFFF;
+    private static boolean freeWidget;
 
     private static int readInt(String path, int def) {
         try { File f = new File(path); if (f.exists()) {
@@ -81,6 +82,7 @@ public class MainHook implements IXposedHookLoadPackage {
         fillDiff = "1".equals(readStr("/sdcard/dock_fill_diff.txt", "0"));
         strokeW = readInt("/sdcard/dock_stroke_w.txt", 2);
         stdStrokeW = readInt("/sdcard/dock_std_stroke_w.txt", 4);
+        freeWidget = "1".equals(readStr("/sdcard/dock_free_widget.txt", "0"));
 
         try {
             // Size hooks
@@ -140,6 +142,30 @@ public class MainHook implements IXposedHookLoadPackage {
                         }
                     });
             } catch (Throwable ignored) {}
+
+            // === Widget free placement: remove MIUI grid restrictions ===
+            // LayoutDropRuleForSwapPlaces.isLegalXY enforces:
+            //   spanX==4 → cellX must be 0 (locks 4-wide widgets to left edge)
+            //   spanY==4 → cellY must be 0 or 2
+            //   spanX<=1 → cellX must be even (odd columns blocked for 1x1)
+            // Hook to always return true — like AOSP Launcher3 free placement.
+            if (freeWidget) {
+                try {
+                    XposedHelpers.findAndHookMethod(
+                        "com.miui.home.launcher.compat.LayoutDropRuleForSwapPlaces",
+                        lpparam.classLoader,
+                        "isLegalXY",
+                        int.class, int.class, int.class, int.class,
+                        new XC_MethodHook() {
+                            @Override protected void beforeHookedMethod(MethodHookParam p) {
+                                p.setResult(true);
+                            }
+                        });
+                    XposedBridge.log("[DC] Widget free placement: OK");
+                } catch (Throwable e) {
+                    XposedBridge.log("[DC] Widget free placement: " + e.getClass().getSimpleName());
+                }
+            }
 
             // setupViews
             XposedHelpers.findAndHookMethod("com.miui.home.launcher.Launcher", lpparam.classLoader,

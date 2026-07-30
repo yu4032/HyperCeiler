@@ -26,6 +26,7 @@ public class SettingsActivity extends Activity {
     private int sqStrokeWidth = 4, sqStrokeOff = 8, sqOuterCp = 58;
     private CheckBox lgCheck;
     private EditText lgTintInput, lgAlphaInput;
+    private CheckBox freeWidgetCheck;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,6 +87,12 @@ public class SettingsActivity extends Activity {
 
         layout.addView(lgCheck);
         layout.addView(lgGroup);
+
+        // Free widget placement
+        freeWidgetCheck = new CheckBox(this);
+        freeWidgetCheck.setText("Free Widget Placement (remove grid restrictions)");
+        freeWidgetCheck.setChecked(sp.getBoolean("free_widget", true));
+        layout.addView(freeWidgetCheck);
 
         // Common settings
         layout.addView(label("Blur Radius (0-400)"));
@@ -218,6 +225,7 @@ public class SettingsActivity extends Activity {
                 boolean fillDiff = fdCheck.isChecked();
                 int strokeW = Integer.parseInt(strokeWInput.getText().toString().trim());
                 int stdSw = Integer.parseInt(stdStrokeInput.getText().toString().trim());
+                boolean freeWidget = freeWidgetCheck.isChecked();
 
                 sp.edit().putString("light_mode", val)
                     .putInt("blur_radius", br).putInt("height_offset", ho)
@@ -227,7 +235,7 @@ public class SettingsActivity extends Activity {
                     .putBoolean("liquid_glass", lg).putString("lg_tint", lgTint).putInt("lg_alpha", lgAlpha)
                     .putInt("lg_blur_scale", lgBlur).putBoolean("lg_bg_on", lgBg)
                     .putBoolean("fill_diff", fillDiff).putInt("stroke_w", strokeW)
-                    .putInt("std_stroke_w", stdSw).commit();
+                    .putInt("std_stroke_w", stdSw).putBoolean("free_widget", freeWidget).commit();
 
                 Process p = Runtime.getRuntime().exec("su");
                 DataOutputStream os = new DataOutputStream(p.getOutputStream());
@@ -248,6 +256,7 @@ public class SettingsActivity extends Activity {
                 os.writeBytes("echo '" + (fillDiff ? "1" : "0") + "' > /sdcard/dock_fill_diff.txt\n");
                 os.writeBytes("echo '" + strokeW + "' > /sdcard/dock_stroke_w.txt\n");
                 os.writeBytes("echo '" + stdSw + "' > /sdcard/dock_std_stroke_w.txt\n");
+                os.writeBytes("echo '" + (freeWidget ? "1" : "0") + "' > /sdcard/dock_free_widget.txt\n");
                 os.writeBytes("am force-stop com.miui.home\nsleep 1\n");
                 os.writeBytes("am start -n com.miui.home/.launcher.Launcher\nexit\n");
                 os.flush(); p.waitFor();
