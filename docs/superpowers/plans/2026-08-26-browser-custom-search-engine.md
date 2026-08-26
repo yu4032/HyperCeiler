@@ -28,11 +28,11 @@
 
 **Interfaces:**
 - Consumes: `BaseHook.hookAllMethods(...)` and Xiaomi Browser runtime classes.
-- Produces: a hook that forces `isCustomSearchEngineDisplay()` true and returns at least 2 from `getCustomSearchEngineDisplayCount()`.
+- Produces: a hook that forces `isCustomSearchEngineDisplay()` true and returns 2 from `getCustomSearchEngineDisplayCount()` for the target browser build.
 
-- [ ] Implement hooks for `KVPrefs`, `SearchKVPrefs`, and `SearchModuleKVPrefs` visibility gates.
-- [ ] Add compatibility hook for legacy `KVPrefs.isDisplayCustomEngine(...)` when present.
-- [ ] Hook `SearchModuleSettings.getCustomSearchEngineDisplayCount()` to return 2 when the configured value is lower.
+- [x] Implement hooks for `KVPrefs`, `SearchKVPrefs`, and `SearchModuleKVPrefs` visibility gates.
+- [x] Add compatibility hook for legacy `KVPrefs.isDisplayCustomEngine(...)` when present.
+- [x] Hook `SearchModuleSettings.getCustomSearchEngineDisplayCount()` to expose both bundled custom definitions.
 - [ ] Compile with Canary/Debug CI.
 
 ### Task 2: Wire setting into Browser module
@@ -40,16 +40,16 @@
 **Files:**
 - Modify: `library/libhook/src/main/java/com/sevtinge/hyperceiler/libhook/app/Browser.java`
 - Modify: `library/core/src/main/res/xml/browser.xml`
-- Modify: `library/core/src/main/res/values/strings.xml`
-- Modify: `library/core/src/main/res/values-zh-rCN/strings.xml`
+- Create: `library/core/src/main/res/values/strings_browser_custom_search.xml`
+- Create: `library/core/src/main/res/values-zh-rCN/strings_browser_custom_search.xml`
 
 **Interfaces:**
 - Consumes: preference key `prefs_key_browser_unlock_custom_search_engine`.
 - Produces: user-facing switch and conditional hook initialization.
 
-- [ ] Add `UnlockCustomSearchEngine` import and `initHook` call using `PrefsBridge.getBoolean("browser_unlock_custom_search_engine")`.
-- [ ] Add a default-off switch to Browser settings.
-- [ ] Add English and Simplified Chinese title/summary resources.
+- [x] Add `UnlockCustomSearchEngine` import and `initHook` call using `PrefsBridge.getBoolean("browser_unlock_custom_search_engine")`.
+- [x] Add a default-off switch to Browser settings.
+- [x] Add English and Simplified Chinese title/summary resources.
 - [ ] Compile resources and Java with CI.
 
 ### Task 3: Verify branch
@@ -61,6 +61,6 @@
 - Consumes: GitHub Actions CI Build.
 - Produces: a reviewable branch/PR with a build artifact when CI succeeds.
 
-- [ ] Review diff for accidental changes to normal search-engine counts/defaults.
+- [x] Review diff for accidental changes to normal search-engine counts/defaults.
 - [ ] Run PR CI (`assembleDebug`) and inspect failures if any.
 - [ ] Keep the branch separate from `main` until integration is explicitly chosen.
