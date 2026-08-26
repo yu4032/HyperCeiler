@@ -28,7 +28,6 @@ import com.sevtinge.hyperceiler.libhook.rules.home.SeekPoints;
 import com.sevtinge.hyperceiler.libhook.rules.home.SetDeviceLevel;
 import com.sevtinge.hyperceiler.libhook.rules.home.UnlockHotseatIcon;
 import com.sevtinge.hyperceiler.libhook.rules.home.dock.DisableRecentsIcon;
-import com.sevtinge.hyperceiler.libhook.rules.home.dock.DockCustomPad;
 import com.sevtinge.hyperceiler.libhook.rules.home.drawer.AllAppsContainerViewBlur;
 import com.sevtinge.hyperceiler.libhook.rules.home.drawer.AllAppsContainerViewSuperBlur;
 import com.sevtinge.hyperceiler.libhook.rules.home.drawer.AppDrawer;
@@ -137,11 +136,9 @@ public class HomePad extends BaseLoad {
             PrefsBridge.getBoolean("home_folder_width") ||
             PrefsBridge.getInt("home_folder_columns", 3) != 3);
         initHook(FolderVerticalSpacing.INSTANCE, PrefsBridge.getBoolean("home_folder_vertical_spacing_enable"));
-
         // 底栏
         initHook(new UnlockHotseatIcon(), PrefsBridge.getBoolean("home_dock_unlock_hotseat"));
         initHook(DisableRecentsIcon.INSTANCE, PrefsBridge.getBoolean("home_dock_disable_recents_icon"));
-        initHook(DockCustomPad.INSTANCE, PrefsBridge.getBoolean("home_dock_bg_custom_enable"));
 
         // 抽屉
         initHook(AppDrawer.INSTANCE, PrefsBridge.getBoolean("home_drawer_all") ||
