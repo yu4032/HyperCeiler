@@ -26,10 +26,10 @@ import io.github.lingqiqi5211.ezhooktool.xposed.java.IMethodHook;
 /**
  * Restores Xiaomi Browser's built-in custom/third-party search engine path.
  *
- * <p>Browser v20.6 still contains SearchEngineDataProvider, SearchEngineBean,
- * CustomizeSearchEngineActivity and the custom-search Room database. The
- * feature is hidden by preference/configuration gates, so keep the browser's
- * own data path and only unlock those gates.</p>
+ * <p>The target Browser build still contains SearchEngineDataProvider,
+ * SearchEngineBean, CustomizeSearchEngineActivity and the custom-search Room
+ * database. The feature is hidden by preference/configuration gates, so keep
+ * the browser's own data path and only unlock those gates.</p>
  */
 public class UnlockCustomSearchEngine extends BaseHook {
     private static final int MIN_CUSTOM_ENGINE_DISPLAY_COUNT = 2;
