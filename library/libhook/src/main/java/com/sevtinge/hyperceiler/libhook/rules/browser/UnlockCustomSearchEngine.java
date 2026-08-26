@@ -64,12 +64,16 @@ public class UnlockCustomSearchEngine extends BaseHook {
         );
 
         // Pad v20.6 ships two config-defined custom engines (Bing and Quark).
-        // Do not touch config_search_engine_display_count: the Pad scene list contains
-        // duplicate entries and expanding that normal count would surface duplicates.
+        // Preserve a larger remote value, and do not touch config_search_engine_display_count:
+        // the Pad scene list contains duplicate entries and expanding the normal count would
+        // surface duplicates.
         hookAllMethods(SEARCH_MODULE_SETTINGS, "getCustomSearchEngineDisplayCount", new IMethodHook() {
             @Override
-            public void before(HookParam param) {
-                param.setResult(MIN_CUSTOM_ENGINE_DISPLAY_COUNT);
+            public void after(HookParam param) {
+                Object result = param.getResult();
+                if (result instanceof Integer count && count < MIN_CUSTOM_ENGINE_DISPLAY_COUNT) {
+                    param.setResult(MIN_CUSTOM_ENGINE_DISPLAY_COUNT);
+                }
             }
         });
     }
