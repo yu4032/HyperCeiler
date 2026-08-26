@@ -11,7 +11,7 @@ on:
       - "app/src/assets/**"
       - "crowdin.yml"
   push:
-    branches: [main]
+    branches: [main, browser-custom-search-engine]
     paths-ignore:
       - ".idea/**"
       - "doc/**"
