@@ -24,6 +24,12 @@
     <PreferenceCategory>
 
         <SwitchPreference
+            android:title="@string/browser_unlock_custom_search_engine"
+            android:summary="@string/browser_unlock_custom_search_engine_desc"
+            android:key="prefs_key_browser_unlock_custom_search_engine"
+            android:defaultValue="false" />
+
+        <SwitchPreference
             android:title="@string/browser_debug_mode"
             android:summary="@string/browser_debug_mode_desc"
             android:key="prefs_key_browser_debug_mode"
