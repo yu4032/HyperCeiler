@@ -35,7 +35,7 @@ import com.sevtinge.hyperceiler.libhook.rules.home.UnlockHotseatIcon;
 import com.sevtinge.hyperceiler.libhook.rules.home.WidgetCornerRadius;
 import com.sevtinge.hyperceiler.libhook.rules.home.dock.DisableRecentsIcon;
 import com.sevtinge.hyperceiler.libhook.rules.home.dock.DockCustom;
-import com.sevtinge.hyperceiler.libhook.rules.home.dock.DockCustomPad;
+import com.sevtinge.hyperceiler.libhook.rules.home.dock.DockCustomNew;
 import com.sevtinge.hyperceiler.libhook.rules.home.dock.FoldDock;
 import com.sevtinge.hyperceiler.libhook.rules.home.dock.HideDock;
 import com.sevtinge.hyperceiler.libhook.rules.home.dock.ShowDockIconTitle;
@@ -243,7 +243,7 @@ public class HomePadOld extends BaseLoad {
 
         // 底栏
         initHook(new DockCustom(), PrefsBridge.getBoolean("home_dock_bg_custom_enable") && PrefsBridge.getStringAsInt("home_dock_add_blur", 0) == 2);
-        initHook(DockCustomPad.INSTANCE, PrefsBridge.getBoolean("home_dock_bg_custom_enable") && (PrefsBridge.getStringAsInt("home_dock_add_blur", 0) == 0 || PrefsBridge.getStringAsInt("home_dock_add_blur", 0) == 1));
+        initHook(DockCustomNew.INSTANCE, PrefsBridge.getBoolean("home_dock_bg_custom_enable") && (PrefsBridge.getStringAsInt("home_dock_add_blur", 0) == 0 || PrefsBridge.getStringAsInt("home_dock_add_blur", 0) == 1));
         initHook(new SeekPoints(), PrefsBridge.getStringAsInt("home_other_seek_points", 0) > 0);
         initHook(ShowDockIconTitle.INSTANCE, PrefsBridge.getBoolean("home_dock_icon_title"));
         initHook(new HideNavigationBar(), PrefsBridge.getBoolean("system_ui_hide_navigation_bar"));
