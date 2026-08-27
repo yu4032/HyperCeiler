@@ -12,9 +12,11 @@
 
 ## 本分支修改内容
 
-修复 Xiaomi 17 Ultra 系统桌面水平间距位移
-新增新版 pad 浏览器自定义搜索引擎开关
-适配平板桌面老旧的 isApplicatoin() 错误拼写
+修复 Xiaomi 17 Ultra 系统桌面水平间距位移。
+
+新增新版 pad 浏览器自定义搜索引擎开关。
+
+适配平板桌面老旧的 isApplicatoin() 错误拼写。
 ## 当前支持的版本
 
 Android 15-16 的 HyperOS
