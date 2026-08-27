@@ -99,7 +99,7 @@ public class IconTitleCustomization extends HomeBaseHookNew {
         if (loadedApps == null) return;
 
         for (Object shortcut : loadedApps) {
-            if (isApplication(shortcut)) continue;
+            if (!isApplication(shortcut)) continue;
 
             String pkgName = (String) callMethod(shortcut, "getPackageName");
             CharSequence newTitle = getAppName(pkgName);
@@ -107,7 +107,7 @@ public class IconTitleCustomization extends HomeBaseHookNew {
             if (newTitle == null || newTitle.isEmpty()) continue;
 
             setObjectField(shortcut, "mLabel", newTitle);
-            updateIconView(activity, launcher, shortcut);break;
+            updateIconView(activity, launcher, shortcut);
         }
     }
 
@@ -123,7 +123,7 @@ public class IconTitleCustomization extends HomeBaseHookNew {
     }
 
     private boolean isApplication(Object shortcut) {
-        return !((boolean) callMethod(shortcut, "isApplication"));
+        return IconTitleApplicationDetector.isApplication(shortcut);
     }
 
     private void updateIconView(Activity activity, Object launcher, Object shortcut) {
@@ -201,7 +201,7 @@ public class IconTitleCustomization extends HomeBaseHookNew {
     }
 
     private void modifyTitle(Object shortcut) {
-        if (isApplication(shortcut)) return;
+        if (!isApplication(shortcut)) return;
 
         String pkgName = (String) callMethod(shortcut, "getPackageName");
         String newTitle = (String) getAppName(pkgName);
