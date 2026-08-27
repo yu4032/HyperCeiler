@@ -54,6 +54,11 @@ jobs:
         with:
           cache-overwrite-existing: true
 
+      - name: Run libhook unit tests
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: ./gradlew :library:libhook:testDebugUnitTest
+
       - name: Configure Release Signing
         if: env.SIGNING_KEY != '' && env.KEY_STORE_PASSWORD != '' && env.KEY_ALIAS != ''
         shell: bash
