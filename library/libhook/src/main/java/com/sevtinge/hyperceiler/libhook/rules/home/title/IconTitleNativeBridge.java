@@ -12,10 +12,16 @@ import java.util.Set;
 
 /** JNI bridge for the no-Dex HyperOS 8 launcher title path. */
 final class IconTitleNativeBridge {
+    private static final int SUPPORTED_LAUNCHER_VERSION = 801025465;
+
     private static boolean loadAttempted;
     private static boolean loaded;
 
     private IconTitleNativeBridge() {
+    }
+
+    static boolean supportsLauncherVersion(int versionCode) {
+        return versionCode == SUPPORTED_LAUNCHER_VERSION;
     }
 
     static synchronized boolean ensureLoaded() {
