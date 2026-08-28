@@ -2,13 +2,12 @@ package com.sevtinge.hyperceiler.libhook.rules.home.title;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
-import java.lang.reflect.Method;
-
 public class IconTitleApplicationDetectorTest {
+
+    private final IconTitleApplicationDetector detector = new IconTitleApplicationDetector();
 
     public static class LegacyShortcut {
         public boolean isApplicatoin() {
@@ -28,34 +27,52 @@ public class IconTitleApplicationDetectorTest {
         }
     }
 
-    @Test
-    public void recognizesHyperOs450LegacyTypoMethod() throws Exception {
-        assertTrue(detect(new LegacyShortcut()));
+    public static class ModernNonApplication {
+        public boolean isApplication() {
+            return false;
+        }
     }
 
-    @Test
-    public void fallsBackToModernSpelling() throws Exception {
-        assertTrue(detect(new ModernShortcut()));
-    }
-
-    @Test
-    public void preservesFalseResultForNonApplicationItems() throws Exception {
-        assertFalse(detect(new LegacyNonApplication()));
-    }
-
-    private boolean detect(Object shortcut) throws Exception {
-        final Class<?> detectorClass;
-        try {
-            detectorClass = Class.forName(
-                "com.sevtinge.hyperceiler.libhook.rules.home.title.IconTitleApplicationDetector"
-            );
-        } catch (ClassNotFoundException e) {
-            fail("IconTitleApplicationDetector is missing");
+    public static class BothSpellingsShortcut {
+        public boolean isApplicatoin() {
             return false;
         }
 
-        Method detector = detectorClass.getDeclaredMethod("isApplication", Object.class);
-        detector.setAccessible(true);
-        return (boolean) detector.invoke(null, shortcut);
+        public boolean isApplication() {
+            return true;
+        }
+    }
+
+    public static class UnsupportedShortcut {
+    }
+
+    @Test
+    public void recognizesHyperOs450LegacyTypoMethod() {
+        assertTrue(detector.isLauncherApplication(new LegacyShortcut()));
+    }
+
+    @Test
+    public void fallsBackToModernSpelling() {
+        assertTrue(detector.isLauncherApplication(new ModernShortcut()));
+    }
+
+    @Test
+    public void preservesFalseResultForLegacyNonApplicationItems() {
+        assertFalse(detector.isLauncherApplication(new LegacyNonApplication()));
+    }
+
+    @Test
+    public void preservesFalseResultForModernNonApplicationItems() {
+        assertFalse(detector.isLauncherApplication(new ModernNonApplication()));
+    }
+
+    @Test
+    public void legacySpellingTakesPrecedenceWhenBothExist() {
+        assertFalse(detector.isLauncherApplication(new BothSpellingsShortcut()));
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void rejectsShortcutWithoutApplicationTypeMethod() {
+        detector.isLauncherApplication(new UnsupportedShortcut());
     }
 }
