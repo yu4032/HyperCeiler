@@ -128,12 +128,11 @@ BridgeStringResult hooked_get_title(void* shortcut_info) {
     const auto custom_title = g_thread_titles->find(package_name);
     if (custom_title == g_thread_titles->end()) return original;
 
-    return BridgeStringResult{
-        .tag = 0,
-        .padding = {},
-        .data = custom_title->second.data(),
-        .length = custom_title->second.size(),
-    };
+    BridgeStringResult replacement{};
+    replacement.tag = 0;
+    replacement.data = custom_title->second.data();
+    replacement.length = custom_title->second.size();
+    return replacement;
 }
 
 bool try_install_from_handle(void* handle) {
