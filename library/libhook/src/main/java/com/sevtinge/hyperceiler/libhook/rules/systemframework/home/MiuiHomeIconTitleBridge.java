@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageInfo;
 import android.net.Uri;
-import android.os.Binder;
 import android.os.Handler;
 import android.os.UserHandle;
 
@@ -106,8 +105,11 @@ public class MiuiHomeIconTitleBridge extends BaseHook {
                 Object[] args = param.getArgs();
                 if (args == null || args.length < 2 || args[1] == null) return;
 
+                UserHandle callingUser = resolveCallingUser(param.getThisObject());
+                if (callingUser == null) return;
+
                 miuiHomeListener = args[1];
-                miuiHomeUser = UserHandle.of(UserHandle.getUserId(Binder.getCallingUid()));
+                miuiHomeUser = callingUser;
             }
         });
 
@@ -123,6 +125,19 @@ public class MiuiHomeIconTitleBridge extends BaseHook {
                 }
             }
         });
+    }
+
+    private UserHandle resolveCallingUser(Object launcherAppsImpl) {
+        try {
+            Object value = callMethod(launcherAppsImpl, "injectCallingUserId");
+            if (value instanceof Integer userId) {
+                return UserHandle.of(userId);
+            }
+        } catch (Throwable t) {
+            XposedLog.e(TAG, getPackageName(),
+                "Failed to resolve MiuiHome calling user", t);
+        }
+        return null;
     }
 
     private boolean isMiuiHomeCaller(HookParam param) {
