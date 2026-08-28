@@ -66,6 +66,10 @@ jobs:
           EOF
           printf '%s' "${SIGNING_KEY}" | base64 --decode > key.jks
 
+      - name: Run libhook unit tests
+        shell: bash
+        run: ./gradlew :library:libhook:testDebugUnitTest
+
       - name: Build Canary
         if: github.event_name != 'pull_request'
         shell: bash
