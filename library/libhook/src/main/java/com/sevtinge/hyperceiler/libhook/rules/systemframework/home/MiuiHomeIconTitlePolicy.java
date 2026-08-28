@@ -10,8 +10,15 @@ import java.util.Set;
 final class MiuiHomeIconTitlePolicy {
     static final String MIUI_HOME_PACKAGE = "com.miui.home";
     private static final char SEPARATOR = '฿';
+    private static final long NATIVE_LAUNCHER_MIN_VERSION = 800000000L;
+    private static final long NATIVE_LAUNCHER_MAX_VERSION_EXCLUSIVE = 900000000L;
 
     private MiuiHomeIconTitlePolicy() {
+    }
+
+    static boolean isSupportedLauncherVersion(long versionCode) {
+        return versionCode >= NATIVE_LAUNCHER_MIN_VERSION
+            && versionCode < NATIVE_LAUNCHER_MAX_VERSION_EXCLUSIVE;
     }
 
     static Map<String, String> parseOverrides(Set<String> rawEntries) {
