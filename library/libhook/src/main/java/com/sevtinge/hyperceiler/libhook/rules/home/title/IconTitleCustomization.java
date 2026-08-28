@@ -55,7 +55,7 @@ public class IconTitleCustomization extends HomeBaseHookNew {
         "mLoadedAppsAndShortcut"
     };
 
-    @Version(isPad = false, min = 600000000)
+    @Version(isPad = false, min = 600000000, max = 799999999)
     private void initOS3Hook() {
         hookLauncherOnCreate("com.miui.home.launcher.BaseLauncher");
         hookShortcutInfo();
@@ -63,6 +63,10 @@ public class IconTitleCustomization extends HomeBaseHookNew {
 
     @Override
     public void initBase() {
+        // MiuiHome 8.x is a native/Rust launcher process. Its title override lives in
+        // system_server (MiuiHomeIconTitleBridge), so never probe removed Java classes here.
+        if (appVersion() >= 800000000) return;
+
         hookLauncherOnCreate("com.miui.home.launcher.Launcher");
         hookShortcutInfo();
     }

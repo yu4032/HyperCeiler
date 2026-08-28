@@ -41,6 +41,7 @@ import com.sevtinge.hyperceiler.libhook.rules.systemframework.freeform.DisableFr
 import com.sevtinge.hyperceiler.libhook.rules.systemframework.freeform.FreeFormCount;
 import com.sevtinge.hyperceiler.libhook.rules.systemframework.freeform.FreeformBubble;
 import com.sevtinge.hyperceiler.libhook.rules.systemframework.freeform.UnForegroundPin;
+import com.sevtinge.hyperceiler.libhook.rules.systemframework.home.MiuiHomeIconTitleBridge;
 import com.sevtinge.hyperceiler.libhook.rules.systemframework.input.MiAospImeSystem;
 import com.sevtinge.hyperceiler.libhook.rules.systemframework.input.MiuiImeUnlockSystem;
 import com.sevtinge.hyperceiler.libhook.rules.systemframework.mipad.IgnoreStylusKeyGesture;
@@ -93,6 +94,10 @@ public class SystemFrameworkB extends BaseLoad {
 
     @Override
     public void onPackageLoaded() {
+        // HyperOS 4 / MiuiHome 8.x native launcher title bridge. Keep this loaded even
+        // while the feature is off so enabling it later does not require system_server restart.
+        initHook(new MiuiHomeIconTitleBridge(), true);
+
         // 核心破解
         initHook(BypassSignCheckForT.INSTANCE,
             (PrefsBridge.getBoolean("system_framework_core_patch_auth_creak") || PrefsBridge.getBoolean("system_framework_core_patch_disable_integrity"))
