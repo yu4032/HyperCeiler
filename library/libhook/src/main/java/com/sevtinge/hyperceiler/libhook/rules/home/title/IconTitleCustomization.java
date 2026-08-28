@@ -91,7 +91,7 @@ public class IconTitleCustomization extends HomeBaseHookNew {
         IconTitleNativeBridge.updateTitles(PrefsBridge.getStringSet(PREF_SET_KEY));
     }
 
-    @Version(isPad = false, min = 600000000)
+    @Version(isPad = false, min = 600000000, max = 799999999)
     private void initOS3Hook() {
         hookLauncherOnCreate("com.miui.home.launcher.BaseLauncher");
         hookShortcutInfo();
