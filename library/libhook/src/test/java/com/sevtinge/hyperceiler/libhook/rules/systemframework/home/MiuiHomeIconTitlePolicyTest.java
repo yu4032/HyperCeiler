@@ -1,7 +1,9 @@
 package com.sevtinge.hyperceiler.libhook.rules.systemframework.home;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -56,16 +58,27 @@ public class MiuiHomeIconTitlePolicyTest {
     }
 
     @Test
-    public void affectedPackagesIncludesRemovedAddedAndRenamedOverrides() {
+    public void affectedPackagesIncludesOnlyRemovedAddedAndRenamedOverrides() {
         Map<String, String> before = Map.of(
             "com.example.removed", "Old",
-            "com.example.renamed", "Before");
+            "com.example.renamed", "Before",
+            "com.example.unchanged", "Same");
         Map<String, String> after = Map.of(
             "com.example.renamed", "After",
-            "com.example.added", "New");
+            "com.example.added", "New",
+            "com.example.unchanged", "Same");
 
         assertEquals(
             Set.of("com.example.removed", "com.example.renamed", "com.example.added"),
             MiuiHomeIconTitlePolicy.affectedPackages(before, after));
+    }
+
+    @Test
+    public void nativeBridgeOnlySupportsMiuiHomeEightSeries() {
+        assertFalse(MiuiHomeIconTitlePolicy.isSupportedLauncherVersion(799999999L));
+        assertTrue(MiuiHomeIconTitlePolicy.isSupportedLauncherVersion(800000000L));
+        assertTrue(MiuiHomeIconTitlePolicy.isSupportedLauncherVersion(801025465L));
+        assertTrue(MiuiHomeIconTitlePolicy.isSupportedLauncherVersion(899999999L));
+        assertFalse(MiuiHomeIconTitlePolicy.isSupportedLauncherVersion(900000000L));
     }
 }
