@@ -215,7 +215,12 @@ extern "C" JNIEXPORT jboolean JNICALL
 Java_com_sevtinge_hyperceiler_libhook_rules_home_title_IconTitleNativeBridge_nativeInstall(
     JNIEnv*, jclass) {
     g_enabled.store(true, std::memory_order_release);
-    return install_for_loaded_launcher() ? JNI_TRUE : JNI_FALSE;
+    const bool installed_now = install_for_loaded_launcher();
+    if (!installed_now && g_hook_func != nullptr) {
+        __android_log_print(ANDROID_LOG_INFO, kTag,
+            "Native hook armed; waiting for %s to load", kLauncherLibrary);
+    }
+    return g_hook_func != nullptr ? JNI_TRUE : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT void JNICALL
