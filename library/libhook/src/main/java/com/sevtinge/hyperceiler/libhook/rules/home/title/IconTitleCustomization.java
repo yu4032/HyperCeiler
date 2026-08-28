@@ -34,14 +34,15 @@ import com.sevtinge.hyperceiler.common.utils.prefs.PrefType;
 import com.sevtinge.hyperceiler.common.utils.prefs.PrefsChangeObserver;
 import com.sevtinge.hyperceiler.libhook.appbase.mihome.HomeBaseHookNew;
 import com.sevtinge.hyperceiler.libhook.appbase.mihome.Version;
-import io.github.lingqiqi5211.ezhooktool.xposed.java.IMethodHook;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import io.github.lingqiqi5211.ezhooktool.xposed.EzXposed;
 import io.github.lingqiqi5211.ezhooktool.xposed.common.HookParam;
+import io.github.lingqiqi5211.ezhooktool.xposed.java.IMethodHook;
 
 public class IconTitleCustomization extends HomeBaseHookNew {
 
@@ -54,6 +55,41 @@ public class IconTitleCustomization extends HomeBaseHookNew {
         "mAllLoadedApps",
         "mLoadedAppsAndShortcut"
     };
+
+    @Version(min = 800000000, max = 899999999)
+    private void initHyperOS8NativeHook() {
+        if (!IconTitleNativeBridge.install()) {
+            XposedLog.e(TAG, getPackageName(),
+                "HyperOS 8 icon title native hook could not attach to the Xposed native API");
+            return;
+        }
+
+        syncNativeTitles();
+
+        Context context = EzXposed.getAppContextOrNull();
+        if (context == null) {
+            XposedLog.w(TAG, getPackageName(),
+                "HyperOS 8 icon title hook installed without app context; live preference refresh is unavailable");
+            return;
+        }
+
+        Handler handler = new Handler(context.getMainLooper());
+        new PrefsChangeObserver(context, handler, true, PREF_KEY) {
+            @Override
+            public void onChange(PrefType type, Uri uri, String name, Object def) {
+                try {
+                    syncNativeTitles();
+                } catch (Throwable t) {
+                    XposedLog.e(TAG, getPackageName(), "HyperOS 8 icon title preference sync failed", t);
+                }
+            }
+        };
+        XposedLog.i(TAG, getPackageName(), "HyperOS 8 native icon title hook initialized");
+    }
+
+    private void syncNativeTitles() {
+        IconTitleNativeBridge.updateTitles(PrefsBridge.getStringSet(PREF_SET_KEY));
+    }
 
     @Version(isPad = false, min = 600000000)
     private void initOS3Hook() {
