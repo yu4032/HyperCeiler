@@ -2,6 +2,8 @@ package com.sevtinge.hyperceiler.libhook.rules.home.title;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -40,5 +42,13 @@ public class IconTitleNativeConfigTest {
         assertEquals(1, config.packageNames().length);
         assertEquals("com.example.ok", config.packageNames()[0]);
         assertEquals("Custom", config.titles()[0]);
+    }
+
+    @Test
+    public void nativeRvaHookIsRestrictedToAnalyzedLauncherBuild() {
+        assertTrue(IconTitleNativeBridge.supportsLauncherVersion(801025465));
+        assertFalse(IconTitleNativeBridge.supportsLauncherVersion(801025464));
+        assertFalse(IconTitleNativeBridge.supportsLauncherVersion(801025466));
+        assertFalse(IconTitleNativeBridge.supportsLauncherVersion(802000000));
     }
 }
