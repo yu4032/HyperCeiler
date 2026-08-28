@@ -58,6 +58,13 @@ public class IconTitleCustomization extends HomeBaseHookNew {
 
     @Version(min = 800000000, max = 899999999)
     private void initHyperOS8NativeHook() {
+        int launcherVersion = appVersion();
+        if (!IconTitleNativeBridge.supportsLauncherVersion(launcherVersion)) {
+            XposedLog.w(TAG, getPackageName(),
+                "HyperOS 8 native icon title hook skipped for unanalyzed launcher version " + launcherVersion);
+            return;
+        }
+
         if (!IconTitleNativeBridge.install()) {
             XposedLog.e(TAG, getPackageName(),
                 "HyperOS 8 icon title native hook could not attach to the Xposed native API");
