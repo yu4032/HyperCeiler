@@ -56,6 +56,11 @@ ShortcutStringGetter g_get_package_name = nullptr;
 std::atomic<bool> g_enabled{false};
 std::mutex g_install_mutex;
 std::shared_ptr<const TitleMap> g_titles = std::make_shared<const TitleMap>();
+
+// The analyzed 8.01 Dart caller copies the returned UTF-8 bytes immediately
+// after ShortcutInfo_get_title returns. Keep the selected immutable snapshot
+// alive across that return boundary so replacement.data cannot dangle during
+// the caller's malloc/memcpy sequence, even if preferences refresh concurrently.
 thread_local std::shared_ptr<const TitleMap> g_thread_titles;
 
 bool ends_with(const char* value, const char* suffix) {
@@ -64,6 +69,20 @@ bool ends_with(const char* value, const char* suffix) {
     const size_t suffix_length = std::strlen(suffix);
     return value_length >= suffix_length
         && std::memcmp(value + value_length - suffix_length, suffix, suffix_length) == 0;
+}
+
+void log_symbol_origin(const char* symbol_name, void* symbol) {
+    Dl_info info{};
+    if (symbol != nullptr && dladdr(symbol, &info) != 0 && info.dli_fname != nullptr) {
+        __android_log_print(ANDROID_LOG_INFO, kTag,
+            "Resolved %s=%p provider=%s base=%p",
+            symbol_name, symbol, info.dli_fname, info.dli_fbase);
+        return;
+    }
+
+    __android_log_print(ANDROID_LOG_WARN, kTag,
+        "Resolved %s=%p but dladdr could not identify its provider",
+        symbol_name, symbol);
 }
 
 void append_utf8(std::string& output, uint32_t code_point) {
@@ -136,18 +155,21 @@ BridgeStringResult hooked_get_title(void* shortcut_info) {
 }
 
 bool try_install_from_handle(void* handle) {
-    if (!g_enabled.load(std::memory_order_acquire) || g_hook_func == nullptr) return false;
+    if (!g_enabled.load(std::memory_order_acquire) || g_hook_func == nullptr || handle == nullptr) {
+        return false;
+    }
     if (g_original_get_title != nullptr) return true;
 
     std::lock_guard<std::mutex> lock(g_install_mutex);
     if (g_original_get_title != nullptr) return true;
 
-    void* title_symbol = nullptr;
-    void* package_symbol = nullptr;
-    if (handle != nullptr) {
-        title_symbol = dlsym(handle, kGetTitleSymbol);
-        package_symbol = dlsym(handle, kGetPackageSymbol);
-    }
+    void* title_symbol = dlsym(handle, kGetTitleSymbol);
+    void* package_symbol = dlsym(handle, kGetPackageSymbol);
+
+    // This 8.01 libapp_launcher.so imports the ShortcutInfo bridge functions
+    // rather than defining them. If Android's handle scope does not expose the
+    // provider directly, resolve from the already-loaded global namespace only
+    // after the launcher library itself has been positively identified.
     if (title_symbol == nullptr) title_symbol = dlsym(RTLD_DEFAULT, kGetTitleSymbol);
     if (package_symbol == nullptr) package_symbol = dlsym(RTLD_DEFAULT, kGetPackageSymbol);
 
@@ -157,6 +179,9 @@ bool try_install_from_handle(void* handle) {
             title_symbol, package_symbol);
         return false;
     }
+
+    log_symbol_origin(kGetTitleSymbol, title_symbol);
+    log_symbol_origin(kGetPackageSymbol, package_symbol);
 
     g_get_package_name = reinterpret_cast<ShortcutStringGetter>(package_symbol);
     const int result = g_hook_func(
@@ -197,7 +222,6 @@ int find_loaded_launcher(dl_phdr_info* info, size_t, void* data) {
 }
 
 bool install_for_loaded_launcher() {
-    if (try_install_from_handle(nullptr)) return true;
     FindLauncherContext context;
     dl_iterate_phdr(find_loaded_launcher, &context);
     return context.installed;
