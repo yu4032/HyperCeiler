@@ -11,11 +11,20 @@ package com.sevtinge.hyperceiler.libhook.rules.home.title;
 /** JNI bridge for the no-Dex HyperOS 8 launcher title-size path. */
 final class TitleFontSizeNativeBridge {
     private static final int SUPPORTED_LAUNCHER_VERSION = 801025465;
+    private static final int LEGACY_DEFAULT_SP = 12;
 
     private TitleFontSizeNativeBridge() {
     }
 
     static boolean supportsLauncherVersion(int versionCode) {
         return versionCode == SUPPORTED_LAUNCHER_VERSION;
+    }
+
+    static boolean canUseSharedSize(int desktopSp, int drawerSp) {
+        return desktopSp != LEGACY_DEFAULT_SP && desktopSp == drawerSp;
+    }
+
+    static double scaleMultiplierFor(int requestedSp) {
+        return requestedSp / (double) LEGACY_DEFAULT_SP;
     }
 }
