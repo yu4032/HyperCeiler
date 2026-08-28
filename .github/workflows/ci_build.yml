@@ -68,7 +68,7 @@ jobs:
 
       - name: Run libhook unit tests
         shell: bash
-        run: ./gradlew :library:libhook:testDebugUnitTest
+        run: ./gradlew :library:libhook:testDebugUnitTest --rerun-tasks --no-build-cache
 
       - name: Build Canary
         if: github.event_name != 'pull_request'
