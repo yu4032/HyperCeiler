@@ -43,4 +43,24 @@ final class TitleFontSizeNativeBridge {
     static byte[] targetFingerprint() {
         return TARGET_FINGERPRINT.clone();
     }
+
+    static synchronized boolean install(int versionCode, int desktopSp, int drawerSp) {
+        if (!supportsLauncherVersion(versionCode) || !canUseSharedSize(desktopSp, drawerSp)) {
+            return false;
+        }
+        if (!IconTitleNativeBridge.ensureLoaded()) {
+            return false;
+        }
+        try {
+            return nativeInstall(
+                scaleMultiplierFor(desktopSp),
+                TARGET_OFFSET,
+                targetFingerprint()
+            );
+        } catch (UnsatisfiedLinkError ignored) {
+            return false;
+        }
+    }
+
+    private static native boolean nativeInstall(double scale, long targetOffset, byte[] fingerprint);
 }
