@@ -13,7 +13,9 @@
 #include <link.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -21,12 +23,20 @@
 #include <string>
 #include <unordered_map>
 
+extern "C" {
+__attribute__((visibility("hidden"))) void* g_title_size_original = nullptr;
+__attribute__((visibility("hidden"))) double g_title_size_scale = 1.0;
+void hyperceiler_title_size_hook();
+}
+
 namespace {
 
 constexpr const char* kTag = "HyperCeiler-IconTitle8";
 constexpr const char* kLauncherLibrary = "libapp_launcher.so";
+constexpr const char* kFlutterAppLibrary = "libapp.so";
 constexpr const char* kGetTitleSymbol = "ShortcutInfo_get_title";
 constexpr const char* kGetPackageSymbol = "ShortcutInfo_get_package_name";
+constexpr size_t kTitleSizeFingerprintLength = 40;
 
 using HookFunType = int (*)(void* function, void* replacement, void** backup);
 using UnhookFunType = int (*)(void* function);
@@ -56,6 +66,12 @@ ShortcutStringGetter g_get_package_name = nullptr;
 std::atomic<bool> g_enabled{false};
 std::mutex g_install_mutex;
 std::shared_ptr<const TitleMap> g_titles = std::make_shared<const TitleMap>();
+
+std::atomic<bool> g_title_size_enabled{false};
+std::atomic<bool> g_title_size_hooked{false};
+std::mutex g_title_size_install_mutex;
+uintptr_t g_title_size_target_offset = 0;
+std::array<uint8_t, kTitleSizeFingerprintLength> g_title_size_fingerprint{};
 
 // The analyzed 8.01 Dart caller copies the returned UTF-8 bytes immediately
 // after ShortcutInfo_get_title returns. Keep the selected immutable snapshot
@@ -227,9 +243,109 @@ bool install_for_loaded_launcher() {
     return context.installed;
 }
 
+bool title_size_range_is_executable(
+    const dl_phdr_info* info,
+    uintptr_t target,
+    size_t length
+) {
+    if (info == nullptr || info->dlpi_phdr == nullptr || length == 0) return false;
+    const uintptr_t target_end = target + length;
+    if (target_end < target) return false;
+
+    const uintptr_t base = static_cast<uintptr_t>(info->dlpi_addr);
+    for (ElfW(Half) i = 0; i < info->dlpi_phnum; ++i) {
+        const ElfW(Phdr)& phdr = info->dlpi_phdr[i];
+        if (phdr.p_type != PT_LOAD || (phdr.p_flags & PF_X) == 0) continue;
+
+        const uintptr_t segment_start = base + static_cast<uintptr_t>(phdr.p_vaddr);
+        const uintptr_t segment_end = segment_start + static_cast<uintptr_t>(phdr.p_memsz);
+        if (segment_end < segment_start) continue;
+        if (target >= segment_start && target_end <= segment_end) return true;
+    }
+    return false;
+}
+
+bool try_install_title_size_from_phdr(const dl_phdr_info* info) {
+    if (!g_title_size_enabled.load(std::memory_order_acquire)
+        || g_hook_func == nullptr
+        || info == nullptr
+        || !ends_with(info->dlpi_name, kFlutterAppLibrary)) {
+        return false;
+    }
+    if (g_title_size_hooked.load(std::memory_order_acquire)) return true;
+
+    std::lock_guard<std::mutex> lock(g_title_size_install_mutex);
+    if (g_title_size_hooked.load(std::memory_order_relaxed)) return true;
+    if (g_title_size_target_offset == 0) return false;
+
+    const uintptr_t base = static_cast<uintptr_t>(info->dlpi_addr);
+    const uintptr_t target = base + g_title_size_target_offset;
+    if (target < base
+        || !title_size_range_is_executable(info, target, g_title_size_fingerprint.size())) {
+        __android_log_print(ANDROID_LOG_ERROR, kTag,
+            "Reject Rust title-size target outside executable libapp.so segment: base=%p target=%p",
+            reinterpret_cast<void*>(base), reinterpret_cast<void*>(target));
+        return false;
+    }
+
+    if (std::memcmp(
+            reinterpret_cast<const void*>(target),
+            g_title_size_fingerprint.data(),
+            g_title_size_fingerprint.size()) != 0) {
+        __android_log_print(ANDROID_LOG_ERROR, kTag,
+            "Reject Rust title-size target: 40-byte fingerprint mismatch at %p",
+            reinterpret_cast<void*>(target));
+        return false;
+    }
+
+    const int result = g_hook_func(
+        reinterpret_cast<void*>(target),
+        reinterpret_cast<void*>(hyperceiler_title_size_hook),
+        &g_title_size_original
+    );
+    if (result != 0 || g_title_size_original == nullptr) {
+        __android_log_print(ANDROID_LOG_ERROR, kTag,
+            "Failed to hook Rust GridController.textSize: result=%d backup=%p",
+            result, g_title_size_original);
+        g_title_size_original = nullptr;
+        return false;
+    }
+
+    g_title_size_hooked.store(true, std::memory_order_release);
+    __android_log_print(ANDROID_LOG_INFO, kTag,
+        "Installed Rust GridController.textSize hook: base=%p target=%p scale=%.6f",
+        reinterpret_cast<void*>(base), reinterpret_cast<void*>(target), g_title_size_scale);
+    return true;
+}
+
+struct FindTitleSizeContext {
+    bool installed = false;
+};
+
+int find_loaded_title_size(dl_phdr_info* info, size_t, void* data) {
+    auto* context = static_cast<FindTitleSizeContext*>(data);
+    if (context == nullptr || info == nullptr || !ends_with(info->dlpi_name, kFlutterAppLibrary)) {
+        return 0;
+    }
+    context->installed = try_install_title_size_from_phdr(info);
+    return context->installed ? 1 : 0;
+}
+
+bool install_for_loaded_title_size() {
+    FindTitleSizeContext context;
+    dl_iterate_phdr(find_loaded_title_size, &context);
+    return context.installed;
+}
+
 void on_library_loaded(const char* name, void* handle) {
-    if (!g_enabled.load(std::memory_order_acquire) || !ends_with(name, kLauncherLibrary)) return;
-    try_install_from_handle(handle);
+    if (name == nullptr) return;
+
+    if (g_enabled.load(std::memory_order_acquire) && ends_with(name, kLauncherLibrary)) {
+        try_install_from_handle(handle);
+    }
+    if (g_title_size_enabled.load(std::memory_order_acquire) && ends_with(name, kFlutterAppLibrary)) {
+        install_for_loaded_title_size();
+    }
 }
 
 }  // namespace
@@ -274,6 +390,55 @@ Java_com_sevtinge_hyperceiler_libhook_rules_home_title_IconTitleNativeBridge_nat
     __android_log_print(ANDROID_LOG_INFO, kTag, "Updated custom title snapshot: %zu entries", next->size());
 }
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_sevtinge_hyperceiler_libhook_rules_home_title_TitleFontSizeNativeBridge_nativeInstall(
+    JNIEnv* env,
+    jclass,
+    jdouble scale,
+    jlong target_offset,
+    jbyteArray fingerprint) {
+    if (!std::isfinite(scale)
+        || scale <= 0.0
+        || target_offset <= 0
+        || fingerprint == nullptr
+        || env->GetArrayLength(fingerprint) != static_cast<jsize>(kTitleSizeFingerprintLength)) {
+        __android_log_print(ANDROID_LOG_ERROR, kTag, "Reject invalid Rust title-size hook configuration");
+        return JNI_FALSE;
+    }
+
+    std::array<jbyte, kTitleSizeFingerprintLength> fingerprint_bytes{};
+    env->GetByteArrayRegion(
+        fingerprint,
+        0,
+        static_cast<jsize>(fingerprint_bytes.size()),
+        fingerprint_bytes.data()
+    );
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        __android_log_print(ANDROID_LOG_ERROR, kTag, "Failed to copy Rust title-size fingerprint");
+        return JNI_FALSE;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(g_title_size_install_mutex);
+        if (g_title_size_hooked.load(std::memory_order_relaxed)) return JNI_TRUE;
+
+        g_title_size_scale = scale;
+        g_title_size_target_offset = static_cast<uintptr_t>(target_offset);
+        for (size_t i = 0; i < fingerprint_bytes.size(); ++i) {
+            g_title_size_fingerprint[i] = static_cast<uint8_t>(fingerprint_bytes[i]);
+        }
+        g_title_size_enabled.store(true, std::memory_order_release);
+    }
+
+    const bool installed_now = install_for_loaded_title_size();
+    if (!installed_now && g_hook_func != nullptr) {
+        __android_log_print(ANDROID_LOG_INFO, kTag,
+            "Rust title-size hook armed; waiting for %s", kFlutterAppLibrary);
+    }
+    return g_hook_func != nullptr ? JNI_TRUE : JNI_FALSE;
+}
+
 extern "C" __attribute__((visibility("default"))) __attribute__((used))
 NativeOnModuleLoaded native_init(const NativeAPIEntries* entries) {
     if (entries == nullptr || entries->hook_func == nullptr) {
@@ -283,5 +448,6 @@ NativeOnModuleLoaded native_init(const NativeAPIEntries* entries) {
     g_hook_func = entries->hook_func;
     __android_log_print(ANDROID_LOG_INFO, kTag, "Native Xposed API attached: version=%u", entries->version);
     if (g_enabled.load(std::memory_order_acquire)) install_for_loaded_launcher();
+    if (g_title_size_enabled.load(std::memory_order_acquire)) install_for_loaded_title_size();
     return on_library_loaded;
 }
