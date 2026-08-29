@@ -33,7 +33,7 @@ import io.github.lingqiqi5211.ezhooktool.xposed.dsl.createHook
 
 class TitleFontSize : HomeBaseHookNew() {
 
-    @Version(isPad = false, min = 600000000)
+    @Version(isPad = false, min = 600000000, max = 799999999)
     private fun initForNewHome() {
         val desktopSp = PrefsBridge.getInt("home_title_font_size", 12).toFloat()
         val drawerSp = PrefsBridge.getInt("home_drawer_title_font_size", 12).toFloat()
@@ -83,6 +83,47 @@ class TitleFontSize : HomeBaseHookNew() {
         }
     }
 
+    @Version(min = 800000000, max = 899999999)
+    private fun initForRustHome() {
+        val desktopSp = PrefsBridge.getInt("home_title_font_size", 12)
+        val drawerSp = PrefsBridge.getInt("home_drawer_title_font_size", 12)
+        val version = appVersion()
+
+        if (!TitleFontSizeNativeBridge.supportsLauncherVersion(version)) {
+            XposedLog.w(
+                TAG,
+                lpparam.packageName,
+                "Rust launcher title-size hook is not analyzed for version $version, skip"
+            )
+            return
+        }
+
+        if (!TitleFontSizeNativeBridge.canUseSharedSize(desktopSp, drawerSp)) {
+            if (desktopSp == 12 && drawerSp == 12) {
+                XposedLog.d(TAG, lpparam.packageName, "No need to hook Rust launcher title size")
+            } else {
+                XposedLog.w(
+                    TAG,
+                    lpparam.packageName,
+                    "Rust launcher 8.01 exposes one shared title-size getter; " +
+                        "desktop and drawer must use the same non-default size " +
+                        "(desktop=$desktopSp, drawer=$drawerSp)"
+                )
+            }
+            return
+        }
+
+        if (TitleFontSizeNativeBridge.install(version, desktopSp, drawerSp)) {
+            XposedLog.d(
+                TAG,
+                lpparam.packageName,
+                "Rust launcher title-size native hook armed: ${desktopSp}sp"
+            )
+        } else {
+            XposedLog.w(TAG, lpparam.packageName, "Failed to arm Rust launcher title-size native hook")
+        }
+    }
+
     override fun initBase() {
         runCatching {
             initForNewHome()
@@ -108,4 +149,3 @@ class TitleFontSize : HomeBaseHookNew() {
             }
     }
 }
-
