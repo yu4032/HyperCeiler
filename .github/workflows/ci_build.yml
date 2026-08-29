@@ -74,11 +74,11 @@ jobs:
           echo "APK_DIR=app/build/outputs/apk/canary" >> "$GITHUB_ENV"
           echo "BUILD_VARIANT=Canary" >> "$GITHUB_ENV"
 
-      - name: Build Debug
+      - name: Test and Build Debug
         if: github.event_name == 'pull_request'
         shell: bash
         run: |
-          ./gradlew assembleDebug
+          ./gradlew :library:libhook:testDebugUnitTest assembleDebug
           echo "APK_DIR=app/build/outputs/apk/debug" >> "$GITHUB_ENV"
           echo "BUILD_VARIANT=Debug" >> "$GITHUB_ENV"
 
